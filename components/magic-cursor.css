@@ -1,0 +1,78 @@
+/* Hide the native cursor only while the magic cursor is active (fine pointers). */
+html.magic-cursor-active,
+html.magic-cursor-active * {
+  cursor: none !important;
+}
+
+.magic-cursor-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.magic-glitter-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.magic-wand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  will-change: transform;
+  transition: opacity 0.2s ease;
+  filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.7))
+    drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+}
+
+.magic-wand-star {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: magic-wand-twinkle 1.6s ease-in-out infinite;
+}
+
+@keyframes magic-wand-twinkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.14) rotate(8deg);
+    opacity: 0.9;
+  }
+}
+
+.magic-glitter {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: magic-glitter-fall var(--dur, 800ms) ease-out forwards;
+}
+
+@keyframes magic-glitter-fall {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--tx, 0), var(--ty, 42px)) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magic-wand-star {
+    animation: none;
+  }
+}

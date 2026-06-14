@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
+import { BatShape } from "@/components/BatShape";
 
 const COVER_MS = 1800;
 const REVEAL_MS = 2000;
@@ -25,37 +26,6 @@ type BatConfig = {
   bob: number;
   flap: number;
 };
-
-function BatShape() {
-  return (
-    <svg
-      viewBox="0 0 200 90"
-      className="intro-bat-svg"
-      width="100%"
-      height="100%"
-      aria-hidden
-    >
-      <g fill="#05030a">
-        <ellipse cx="100" cy="48" rx="8" ry="20" />
-        <path
-          d="M100 28 L93 17 L87 8 L90 26
-             C91 31 91 33 92 36
-             C66 14 36 14 8 28
-             C26 40 22 52 40 50
-             C52 49 50 58 66 56
-             C78 55 80 60 92 60
-             L100 74 L108 60
-             C120 60 122 55 134 56
-             C150 58 148 49 160 50
-             C178 52 174 40 192 28
-             C164 14 134 14 108 36
-             C109 33 109 31 110 26
-             L113 8 L107 17 L100 28 Z"
-        />
-      </g>
-    </svg>
-  );
-}
 
 function Bat({ config }: { config: BatConfig }) {
   return (

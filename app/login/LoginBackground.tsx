@@ -3,10 +3,26 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-export default function LoginBackground() {
+type LoginBackgroundProps = {
+  variant?: "default" | "gothic";
+};
+
+const PALETTES = {
+  default: {
+    base: [0.6353, 0.9608, 0.8588] as const,
+    bg: [0, 0, 0] as const,
+  },
+  gothic: {
+    base: [0.659, 0.333, 0.969] as const, // #a855f7
+    bg: [0.039, 0.024, 0.071] as const, // #0a0612
+  },
+};
+
+export default function LoginBackground({ variant = "default" }: LoginBackgroundProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const palette = PALETTES[variant];
     let scene: THREE.Scene;
     let camera: THREE.OrthographicCamera;
     let renderer: THREE.WebGLRenderer;
@@ -18,6 +34,8 @@ export default function LoginBackground() {
       t: { value: 0.0 },
       r: { value: new THREE.Vector2(1, 1) },
       mouse: { value: new THREE.Vector2(0.5, 0.5) },
+      baseColor: { value: new THREE.Vector3(...palette.base) },
+      bgColor: { value: new THREE.Vector3(...palette.bg) },
     };
 
     function init() {
@@ -54,6 +72,8 @@ export default function LoginBackground() {
                     uniform vec2 r;
                     uniform float t;
                     uniform vec2 mouse;
+                    uniform vec3 baseColor;
+                    uniform vec3 bgColor;
                     varying vec2 vUv;
                     #define PI 3.14159265359
                     mat2 rot(float a) {
@@ -110,8 +130,7 @@ export default function LoginBackground() {
                         vec2 uv = (vUv - 0.5) * 2.0;
                         uv.x *= r.x / r.y;
                         vec2 uv0 = uv;
-                        vec3 col = vec3(0.0);
-                        vec3 baseColor = vec3(0.6353, 0.9608, 0.8588);
+                        vec3 col = bgColor;
                         float time = t * 0.4;
                         float noise = (snoise(uv * 0.5 + time * 0.02) + 1.0) * 0.5;
                         col += noise * baseColor * 0.08;
@@ -202,7 +221,7 @@ export default function LoginBackground() {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, []);
+  }, [variant]);
 
   return <div ref={mountRef} className="absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { El_Messiri } from "next/font/google";
@@ -193,12 +193,6 @@ function IntroLoadingScreen({ progress }: { progress: number }) {
 }
 
 function IntroReadyGate({ onReady }: { onReady: () => void }) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    buttonRef.current?.focus();
-  }, []);
-
   return (
     <motion.div
       className={`intro-ready ${elMessiri.className}`}
@@ -237,7 +231,6 @@ function IntroReadyGate({ onReady }: { onReady: () => void }) {
         </IntroMarqueeFrame>
 
         <button
-          ref={buttonRef}
           type="button"
           onClick={onReady}
           className={`intro-gate-cta intro-ready-cta ${elMessiri.className}`}

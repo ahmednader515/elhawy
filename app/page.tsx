@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { unstable_noStore } from "next/cache";
 import { preload } from "react-dom";
+import { Aref_Ruqaa_Ink, El_Messiri } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getHomepageSettings, getPublishedCourseSlugsByIds } from "@/lib/db";
@@ -14,9 +15,26 @@ import {
   HomePageBelowFoldFallback,
 } from "@/components/HomePageBelowFold";
 import { IntroGateOverlay } from "@/components/IntroGateOverlay";
-import { resolveHeroBgGradient } from "@/lib/hero-bg";
+import { HomeHeroDecor } from "@/components/HomeHeroDecor";
+import { HomeScrollBats } from "@/components/HomeScrollBats";
+import { HomeEdgeDecor } from "@/components/HomeEdgeDecor";
 import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import "@/components/home-theme.css";
+
+const arefRuqaa = Aref_Ruqaa_Ink({
+  subsets: ["arabic"],
+  weight: ["400", "700"],
+  variable: "--font-aref",
+  display: "swap",
+});
+
+const elMessiri = El_Messiri({
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-elmessiri",
+  display: "swap",
+});
 
 /** عدم تخزين الصفحة مؤقتاً — الكورسات الجديدة والمحذوفة تظهر فوراً */
 export const dynamic = "force-dynamic";
@@ -31,7 +49,6 @@ export default async function HomePage() {
     getHomepageSettings(),
   ]);
 
-  const heroBg = resolveHeroBgGradient(homepageSettings);
   const heroTemplate =
     homepageSettings.heroTemplate === "image_slider"
       ? "image_slider"
@@ -84,8 +101,10 @@ export default async function HomePage() {
   }
 
   return (
-    <div>
+    <div className={`home-themed ${arefRuqaa.variable} ${elMessiri.variable}`}>
       <IntroGateOverlay />
+      <HomeEdgeDecor />
+      <HomeScrollBats />
       {heroTemplate === "image_slider" ? (
         <section
           className="relative w-full overflow-hidden bg-[var(--color-background)]"
@@ -109,12 +128,9 @@ export default async function HomePage() {
           className="hero-saas relative min-h-screen w-full flex items-center justify-center overflow-hidden"
           aria-label={t("home.heroAria", "Hero")}
         >
-          <div
-            className="absolute inset-0 w-full h-full"
-            style={{
-              background: `linear-gradient(180deg, ${heroBg.from} 0%, ${heroBg.to} 100%)`,
-            }}
-          />
+          <div className="home-hero-gradient absolute inset-0 w-full h-full" />
+
+          <HomeHeroDecor />
 
           <svg
             className="hero-stars absolute inset-0 w-full h-full pointer-events-none"
@@ -152,10 +168,10 @@ export default async function HomePage() {
           <div className="hero-saas-content relative z-10 mx-auto w-full max-w-6xl min-h-screen flex items-center justify-center px-4 py-16 sm:px-6 -mt-32">
             <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-44 xl:gap-52">
               <div className={`flex-1 ${heroTextAlignClass} order-2 lg:order-1 lg:max-w-2xl`}>
-                <h1 className="text-5xl font-bold leading-tight text-white sm:text-6xl lg:text-7xl">
+                <h1 className="home-hero-title text-5xl font-bold leading-tight sm:text-6xl lg:text-7xl">
                   {pickLocalizedText(locale, homepageSettings.heroTitle, homepageSettings.heroTitleEn) || t("home.defaultHeroTitle", "Mr. Essam Mohy")}
                 </h1>
-                <p className="mt-6 text-2xl font-medium text-sky-200/90 sm:text-3xl">
+                <p className="home-hero-slogan mt-6 text-2xl font-medium sm:text-3xl">
                   {pickLocalizedText(locale, homepageSettings.heroSlogan, homepageSettings.heroSloganEn) || t("home.defaultHeroSlogan", "Study it... and finally understand it right!")}
                 </p>
               </div>

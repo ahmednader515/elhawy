@@ -1,0 +1,290 @@
+/* ============================================================
+   Gothic homepage theme — forces the intro's dark magic palette
+   on the homepage regardless of the site light/dark toggle.
+   ============================================================ */
+
+/* High specificity (html.light/.dark .home-themed) to beat the theme tokens
+   defined on html.light / html.dark. */
+html.light .home-themed,
+html.dark .home-themed,
+.home-themed {
+  --color-background: #0a0612;
+  --color-surface: #150c26;
+  --color-foreground: #f3e8ff;
+  --color-border: #2a1b40;
+  --color-muted: #c4b5e0;
+  --color-primary: #a855f7;
+  --color-primary-hover: #9333ea;
+  --color-primary-light: #2a1b40;
+  --color-accent: #fbbf24;
+  --color-reviews-bg: #0d0818;
+  --color-reviews-avatar: #2a1b40;
+}
+
+.home-themed {
+  position: relative;
+  background:
+    radial-gradient(120% 80% at 12% 4%, rgba(76, 64, 130, 0.35) 0%, rgba(10, 6, 18, 0) 45%),
+    radial-gradient(90% 60% at 50% 100%, rgba(86, 33, 140, 0.28) 0%, rgba(10, 6, 18, 0) 60%),
+    #0a0612;
+  color: var(--color-foreground);
+  font-family: var(--font-elmessiri), var(--font-sans);
+}
+
+/* Themed Arabic display font for headings. */
+.home-themed h1,
+.home-themed h2,
+.home-themed h3 {
+  font-family: var(--font-aref), var(--font-elmessiri), serif;
+}
+
+/* Neutralize the hardcoded light background on below-fold course sections
+   (scoped to <section> so it doesn't touch small white UI bits like slider dots). */
+.home-themed section.bg-white {
+  background-color: var(--color-background) !important;
+}
+
+/* The hero bottom wave should melt into the gothic background, not white. */
+.home-themed .hero-wave-fill {
+  fill: #0a0612 !important;
+}
+
+/* ── Hero gothic gradient ── */
+.home-hero-gradient {
+  background:
+    radial-gradient(140% 90% at 18% 0%, rgba(96, 78, 160, 0.5) 0%, rgba(13, 8, 24, 0) 48%),
+    radial-gradient(120% 80% at 82% 10%, rgba(124, 58, 237, 0.28) 0%, rgba(13, 8, 24, 0) 55%),
+    linear-gradient(180deg, #150d28 0%, #0d0818 55%, #07040f 100%);
+}
+
+.home-hero-title {
+  color: #f6efff;
+  text-shadow:
+    0 0 18px rgba(168, 85, 247, 0.55),
+    0 0 44px rgba(124, 58, 237, 0.35);
+}
+
+.home-hero-slogan {
+  color: #d8c7f5;
+  text-shadow: 0 0 16px rgba(124, 58, 237, 0.3);
+}
+
+/* ============================================================
+   Hero decor — moon + rays, trees, stones
+   ============================================================ */
+.home-hero-decor {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Moon wrapper — the box that represents the visible moon disc. It is pushed
+   into the top-left corner so the disc is partly off-screen (left/top) and its
+   top sits behind the fixed navbar. Halo + rays + disc all share this center. */
+.home-moon-wrap {
+  --moon-size: clamp(24rem, 40vw, 46rem);
+  position: absolute;
+  top: calc(var(--moon-size) * -0.42);
+  left: calc(var(--moon-size) * -0.34);
+  width: var(--moon-size);
+  height: var(--moon-size);
+  animation: home-moon-float 11s ease-in-out infinite;
+}
+
+/* The disc box is the size of the moon; the wide source image is scaled up and
+   centered so only the circular disc fills the box (rest is transparent). */
+.home-moon-disc {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  filter: drop-shadow(0 0 34px rgba(190, 200, 255, 0.6))
+    drop-shadow(0 0 90px rgba(130, 150, 255, 0.38));
+}
+
+.home-moon-disc img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Disc is ~28.7% of the source width, so scale the image ~3.48x. */
+  width: 348%;
+  height: auto;
+  transform: translate(-50%, -50%);
+}
+
+/* Rotating light rays, centered on the moon disc. */
+.home-moon-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 280%;
+  height: 280%;
+  margin: -140% 0 0 -140%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: conic-gradient(
+    from 0deg,
+    rgba(205, 214, 255, 0) 0deg,
+    rgba(205, 214, 255, 0.22) 6deg,
+    rgba(205, 214, 255, 0) 16deg,
+    rgba(205, 214, 255, 0) 38deg,
+    rgba(195, 206, 255, 0.16) 47deg,
+    rgba(205, 214, 255, 0) 58deg,
+    rgba(205, 214, 255, 0) 84deg,
+    rgba(214, 220, 255, 0.2) 95deg,
+    rgba(205, 214, 255, 0) 106deg,
+    rgba(205, 214, 255, 0) 132deg,
+    rgba(195, 206, 255, 0.15) 142deg,
+    rgba(205, 214, 255, 0) 153deg,
+    rgba(205, 214, 255, 0) 360deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, rgba(0, 0, 0, 0) 16%, #000 26%, rgba(0, 0, 0, 0) 72%);
+  mask-image: radial-gradient(closest-side, rgba(0, 0, 0, 0) 16%, #000 26%, rgba(0, 0, 0, 0) 72%);
+  animation: home-ray-spin 70s linear infinite, home-ray-pulse 7s ease-in-out infinite;
+}
+
+.home-moon-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  margin: -100% 0 0 -100%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle,
+    rgba(190, 200, 255, 0.3) 0%,
+    rgba(130, 150, 255, 0.13) 33%,
+    rgba(130, 150, 255, 0) 66%
+  );
+  animation: home-ray-pulse 7s ease-in-out infinite;
+}
+
+@keyframes home-moon-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(12px);
+  }
+}
+
+@keyframes home-ray-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes home-ray-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/* ============================================================
+   Scroll bats layer
+   ============================================================ */
+.home-bats {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.home-bat {
+  position: absolute;
+  left: 0;
+  will-change: transform;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.5));
+}
+
+.home-bat-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Wing flap: each membrane rotates around the shoulder. */
+.bat-wing {
+  transform-box: view-box;
+  animation-duration: var(--flap, 0.32s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.bat-wing--l {
+  transform-origin: 97px 52px;
+  animation-name: bat-wing-l;
+}
+
+.bat-wing--r {
+  transform-origin: 103px 52px;
+  animation-name: bat-wing-r;
+}
+
+@keyframes bat-wing-l {
+  0%,
+  100% {
+    transform: rotate(14deg);
+  }
+  50% {
+    transform: rotate(-30deg);
+  }
+}
+
+@keyframes bat-wing-r {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+  }
+  50% {
+    transform: rotate(30deg);
+  }
+}
+
+/* ============================================================
+   Edge frame decorations (web-left / web-right)
+   ============================================================ */
+.home-edge {
+  position: fixed;
+  /* Drip from just below the sticky navbar instead of hiding behind it. */
+  top: clamp(4rem, 4.5rem, 5rem);
+  width: clamp(6rem, 11vw, 12rem);
+  height: auto;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0.45;
+  filter: brightness(0.85);
+}
+
+.home-edge--left {
+  left: 0;
+}
+
+.home-edge--right {
+  right: 0;
+}
+
+@media (max-width: 900px) {
+  .home-edge {
+    width: 6rem;
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-moon-wrap,
+  .home-moon-rays,
+  .home-moon-halo {
+    animation: none;
+  }
+}
