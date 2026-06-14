@@ -6,6 +6,22 @@
 
 .intro-scene-world {
   z-index: 0;
+  /* Promote to a single stable compositor layer so the zoom is a pure GPU
+     transform — prevents per-frame re-rasterization flicker on mobile. */
+  will-change: transform;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* During the zoom, freeze ambient looping animations so the promoted layer is
+   not re-rasterized every frame (eliminates mobile flicker while scaling). */
+.intro-scene-world.is-zooming .intro-prop--clouds,
+.intro-scene-world.is-zooming .intro-prop--moon,
+.intro-scene-world.is-zooming .intro-prop--fog,
+.intro-scene-world.is-zooming .intro-prop--particles,
+.intro-scene-world.is-zooming .intro-prop--flame {
+  animation-play-state: paused;
 }
 
 /* Fixed 16:9 stage that covers the viewport (cover behavior). All props are
@@ -14,7 +30,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   width: max(100vw, calc(100vh * 16 / 9));
   height: max(100vh, calc(100vw * 9 / 16));
 }
@@ -43,6 +61,9 @@
 
 .intro-prop-img {
   object-fit: contain;
+  /* Cheap hint (no extra layer) to reduce edge shimmer during the zoom. */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .intro-prop-img--fill {

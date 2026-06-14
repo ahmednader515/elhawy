@@ -125,7 +125,9 @@ export function IntroGate({ onComplete, revealMode = "fade" }: IntroGateProps) {
       >
         {/* Layered world — zooms on enter */}
         <motion.div
-          className="intro-scene-world absolute inset-0"
+          className={`intro-scene-world absolute inset-0${
+            isZooming ? " is-zooming" : ""
+          }`}
           style={{ transformOrigin: "50% 48%" }}
           animate={{
             scale: isZooming ? 1.75 : 1,
