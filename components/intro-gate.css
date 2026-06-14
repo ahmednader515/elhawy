@@ -351,7 +351,7 @@
 
 .intro-sign-title {
   text-align: center;
-  font-size: 1.35rem;
+  font-size: 3rem;
   font-weight: 700;
   line-height: 1.15;
   color: #4a1810;
@@ -404,7 +404,7 @@
   }
 
   .intro-sign-title {
-    font-size: 1.65rem;
+    font-size: 3rem;
   }
 
   .intro-sign-subtitle {
@@ -414,7 +414,7 @@
 
 @media (min-width: 1024px) {
   .intro-sign-title {
-    font-size: 3rem;
+    font-size: 4rem;
   }
 
   .intro-sign-subtitle {
@@ -647,57 +647,230 @@
   }
 }
 
-.intro-audio-toggle {
+/* ── Pre-hydration / transition backdrop ── */
+.intro-root-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #06040c;
+}
+
+/* ── Bat swarm transition ── */
+.intro-bats {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.intro-bats-black {
   position: absolute;
-  left: max(0.85rem, 2.5vw);
-  bottom: max(1rem, 4vh);
-  z-index: 25;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  border: none;
-  background: transparent;
-  color: rgba(233, 213, 255, 0.92);
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.2s ease, color 0.2s ease;
+  inset: 0;
+  background: #000000;
 }
 
-.intro-audio-toggle:hover {
-  color: #f3e8ff;
-  transform: translateY(-1px);
+.intro-bat-wrap {
+  position: absolute;
+  left: 0;
+  will-change: transform;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.55));
 }
 
-.intro-audio-toggle:active {
-  transform: translateY(0);
+.intro-bat-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 42%;
+  will-change: transform;
+  animation-name: intro-bat-flap;
+  animation-duration: var(--flap, 0.2s);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
 
-.intro-audio-toggle-icon {
+@keyframes intro-bat-flap {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1);
+  }
+  50% {
+    transform: scaleY(0.6) scaleX(1.04);
+  }
+}
+
+/* ── Loading screen ── */
+.intro-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 18%, rgba(76, 29, 149, 0.4) 0%, rgba(10, 6, 18, 0) 55%),
+    radial-gradient(90% 70% at 50% 100%, rgba(86, 33, 140, 0.32) 0%, rgba(10, 6, 18, 0) 60%),
+    linear-gradient(180deg, #0a0612 0%, #110a1f 50%, #07040d 100%);
+}
+
+.intro-loading-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(70vw, 30rem);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   border-radius: 9999px;
-  border: 1.5px solid rgba(192, 132, 252, 0.55);
-  background: radial-gradient(
-    circle at 50% 35%,
-    rgba(88, 28, 135, 0.55) 0%,
-    rgba(15, 8, 28, 0.88) 72%
-  );
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.22) 0%, transparent 65%);
+  filter: blur(8px);
+  animation: intro-loading-pulse 3.4s ease-in-out infinite;
+}
+
+.intro-loading-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.intro-loading-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(192, 132, 252, 0.18);
+  border-top-color: rgba(216, 180, 254, 0.95);
+  border-right-color: rgba(168, 85, 247, 0.7);
   box-shadow:
-    0 0 16px rgba(124, 58, 237, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 0 22px rgba(147, 51, 234, 0.45),
+    inset 0 0 14px rgba(124, 58, 237, 0.35);
+  animation: intro-loading-spin 1.1s linear infinite;
 }
 
-.intro-audio-toggle-icon svg {
-  width: 1.25rem;
-  height: 1.25rem;
+.intro-loading-ring-core {
+  font-size: 1.3rem;
+  color: #e9d5ff;
+  text-shadow: 0 0 14px rgba(192, 132, 252, 0.9);
+  animation: intro-loading-spin-reverse 1.1s linear infinite;
 }
 
-.intro-audio-toggle-label {
-  font-size: 0.72rem;
+.intro-loading-title {
+  font-size: 1.5rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
-  text-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+  color: #f3e8ff;
+  text-shadow:
+    0 0 18px rgba(168, 85, 247, 0.7),
+    0 0 38px rgba(124, 58, 237, 0.45);
+}
+
+.intro-loading-bar {
+  position: relative;
+  width: min(72vw, 18rem);
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: rgba(120, 80, 180, 0.18);
+  overflow: hidden;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+.intro-loading-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #e9d5ff 100%);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.8);
+  transition: width 0.35s ease;
+}
+
+.intro-loading-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(221, 214, 254, 0.85);
+}
+
+@media (min-width: 640px) {
+  .intro-loading-ring {
+    width: 5.25rem;
+    height: 5.25rem;
+  }
+
+  .intro-loading-title {
+    font-size: 1.85rem;
+  }
+}
+
+@keyframes intro-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes intro-loading-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes intro-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+/* ── "Are you ready?" gate ── */
+.intro-ready {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 30%, rgba(60, 24, 120, 0.32) 0%, rgba(0, 0, 0, 0) 60%),
+    #000000;
+}
+
+.intro-ready-glow {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  width: min(85vw, 38rem);
+  aspect-ratio: 1.6 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.28) 0%, transparent 68%);
+  filter: blur(10px);
+  animation: intro-loading-pulse 4s ease-in-out infinite;
+}
+
+.intro-ready-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  padding: 0 1.25rem;
+  width: 100%;
+}
+
+.intro-ready-cta {
+  margin-top: 0.25rem;
 }

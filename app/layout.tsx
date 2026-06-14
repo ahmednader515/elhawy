@@ -21,6 +21,7 @@ import { getLocaleFromCookie } from "@/lib/i18n/server";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { homepageDefaultForLocale } from "@/lib/homepage-default-for-locale";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import { INTRO_BACKGROUND_BOOTSTRAP } from "@/lib/introBackgroundAudio";
 import {
   HOMEPAGE_DEFAULT_FOOTER_COPYRIGHT_AR,
   HOMEPAGE_DEFAULT_FOOTER_TAGLINE_AR,
@@ -139,6 +140,11 @@ export default async function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=localStorage.getItem("theme");document.documentElement.classList.add(t==="light"?"light":"dark");})();`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: INTRO_BACKGROUND_BOOTSTRAP,
           }}
         />
         {platformPrimaryColor ? (

@@ -22,12 +22,20 @@ const FADE_OUT_DURATION = 1;
 
 type IntroGateProps = {
   onComplete: () => void;
+  /**
+   * "fade" (default) fades the whole intro out to reveal what's behind it.
+   * "hold" keeps the final zoomed frame fully opaque and hands off via
+   * onComplete (used when a separate transition performs the reveal).
+   */
+  revealMode?: "fade" | "hold";
 };
 
 type SequencePhase = "idle" | "sequence" | "entering" | "exiting";
 
-export function IntroGate({ onComplete }: IntroGateProps) {
-  const { play, isMuted, toggleMute } = useIntroAudio();
+const HOLD_EXIT_MS = 200;
+
+export function IntroGate({ onComplete, revealMode = "fade" }: IntroGateProps) {
+  const { play } = useIntroAudio();
   const [phase, setPhase] = useState<SequencePhase>("idle");
   const [gatesOpen, setGatesOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -91,12 +99,11 @@ export function IntroGate({ onComplete }: IntroGateProps) {
 
   useEffect(() => {
     if (phase !== "exiting") return;
-    const id = window.setTimeout(
-      handleFadeOutComplete,
-      FADE_OUT_DURATION * 1000 + 80,
-    );
+    const delay =
+      revealMode === "hold" ? HOLD_EXIT_MS : FADE_OUT_DURATION * 1000 + 80;
+    const id = window.setTimeout(handleFadeOutComplete, delay);
     return () => window.clearTimeout(id);
-  }, [phase, handleFadeOutComplete]);
+  }, [phase, handleFadeOutComplete, revealMode]);
 
   if (!mounted) return null;
 
@@ -111,7 +118,9 @@ export function IntroGate({ onComplete }: IntroGateProps) {
         aria-modal="true"
         aria-label="مقدمة أكاديمية الحاوي"
         initial={{ opacity: 1 }}
-        animate={{ opacity: phase === "exiting" ? 0 : 1 }}
+        animate={{
+          opacity: phase === "exiting" && revealMode === "fade" ? 0 : 1,
+        }}
         transition={{ duration: FADE_OUT_DURATION, ease: "easeInOut" }}
       >
         {/* Layered world — zooms on enter */}
@@ -130,33 +139,6 @@ export function IntroGate({ onComplete }: IntroGateProps) {
         </motion.div>
 
         <div className="intro-scene-vignette pointer-events-none absolute inset-0 z-[5]" aria-hidden />
-
-        <motion.button
-          type="button"
-          onClick={toggleMute}
-          className={`intro-audio-toggle ${elMessiri.className}`}
-          aria-label={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
-          aria-pressed={isMuted}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.45 }}
-        >
-          <span className="intro-audio-toggle-icon" aria-hidden>
-            {isMuted ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <path d="M11 5L6 9H3v6h3l5 4V5z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M16 9l4 4M20 9l-4 4" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <path d="M11 5L6 9H3v6h3l5 4V5z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M15.5 8.5a5 5 0 010 7" strokeLinecap="round" />
-                <path d="M18 6a8.5 8.5 0 010 12" strokeLinecap="round" />
-              </svg>
-            )}
-          </span>
-          <span className="intro-audio-toggle-label">الصوت</span>
-        </motion.button>
 
         {/* UI overlay */}
         <div className="intro-scene-ui pointer-events-none absolute inset-0 z-20 flex flex-col">
