@@ -13,6 +13,7 @@ import {
   HomePageBelowFold,
   HomePageBelowFoldFallback,
 } from "@/components/HomePageBelowFold";
+import { IntroGateOverlay } from "@/components/IntroGateOverlay";
 import { resolveHeroBgGradient } from "@/lib/hero-bg";
 import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
@@ -73,6 +74,8 @@ export default async function HomePage() {
       : 5000;
   const heroTextAlignClass = locale === "en" ? "text-left" : "text-right";
 
+  preload("/intro/audio/background.mp3", { as: "audio" });
+
   if (heroTemplate === "image_slider" && heroSliderSlides[0]?.src) {
     preload(heroSliderSlides[0].src, { as: "image" });
   } else if (heroTemplate === "classic") {
@@ -82,6 +85,7 @@ export default async function HomePage() {
 
   return (
     <div>
+      <IntroGateOverlay />
       {heroTemplate === "image_slider" ? (
         <section
           className="relative w-full overflow-hidden bg-[var(--color-background)]"
