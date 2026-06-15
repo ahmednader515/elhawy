@@ -22,6 +22,8 @@ const FADE_OUT_DURATION = 1;
 
 type IntroGateProps = {
   onComplete: () => void;
+  /** Fired when the zoom-in begins (entering phase). */
+  onZoomStart?: () => void;
   /**
    * "fade" (default) fades the whole intro out to reveal what's behind it.
    * "hold" keeps the final zoomed frame fully opaque and hands off via
@@ -34,7 +36,7 @@ type SequencePhase = "idle" | "sequence" | "entering" | "exiting";
 
 const HOLD_EXIT_MS = 200;
 
-export function IntroGate({ onComplete, revealMode = "fade" }: IntroGateProps) {
+export function IntroGate({ onComplete, onZoomStart, revealMode = "fade" }: IntroGateProps) {
   const { play } = useIntroAudio();
   const [phase, setPhase] = useState<SequencePhase>("idle");
   const [gatesOpen, setGatesOpen] = useState(false);
@@ -62,7 +64,8 @@ export function IntroGate({ onComplete, revealMode = "fade" }: IntroGateProps) {
     if (gateCompleteRef.current) return;
     gateCompleteRef.current = true;
     setPhase("entering");
-  }, []);
+    onZoomStart?.();
+  }, [onZoomStart]);
 
   const handleOpenGate = useCallback(() => {
     if (phase !== "idle") return;

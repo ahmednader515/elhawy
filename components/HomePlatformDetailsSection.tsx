@@ -1,4 +1,5 @@
 import type { PlatformDetailsItem, PlatformDetailsPresetIcon } from "@/lib/types";
+import { ManuscriptCard } from "@/components/ManuscriptCard";
 
 function PresetIcon({ icon }: { icon: PlatformDetailsPresetIcon }) {
   const common = { className: "h-6 w-6", fill: "none", stroke: "currentColor", strokeWidth: 1.8 } as const;
@@ -48,22 +49,19 @@ export function HomePlatformDetailsSection({
             {subtitle}
           </p>
         ) : null}
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {items.map((item) => (
-            <article
-              key={item.id}
-              className="group rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-5 text-center shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)]"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[var(--color-primary)]/25 bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+        <div className="mt-10 grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {items.map((item, index) => (
+            <ManuscriptCard key={item.id} index={index}>
+              <div className="manuscript-icon">
                 {item.iconType === "upload" && item.customIconUrl ? (
                   <img src={item.customIconUrl} alt="" className="h-8 w-8 object-contain" aria-hidden />
                 ) : (
                   <PresetIcon icon={item.presetIcon} />
                 )}
               </div>
-              <h3 className="mt-4 text-base font-bold text-[var(--color-foreground)]">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">{item.description}</p>
-            </article>
+              <h3 className="manuscript-title">{item.title}</h3>
+              <p className="manuscript-desc">{item.description}</p>
+            </ManuscriptCard>
           ))}
         </div>
       </div>

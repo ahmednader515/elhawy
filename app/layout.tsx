@@ -10,6 +10,7 @@ import { StoreSplashProvider } from "@/components/StoreSplashProvider";
 import { InspectGuard } from "@/components/InspectGuard";
 import { ForceLogoutGuard } from "@/components/ForceLogoutGuard";
 import { MagicCursor } from "@/components/MagicCursor";
+import { BackgroundMusicMute } from "@/components/BackgroundMusicMute";
 import { authOptions } from "@/lib/auth";
 import {
   getHomepageSettings,
@@ -167,6 +168,7 @@ export default async function RootLayout({
           shadow="0 0 10px rgba(13,148,136,0.4)"
         />
         <LocaleProvider locale={locale}>
+          <BackgroundMusicMute />
           <SessionProvider>
             <StoreSplashProvider>
             <InspectGuard />

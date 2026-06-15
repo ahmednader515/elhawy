@@ -1,5 +1,6 @@
 const BACKGROUND_SRC = "/intro/audio/background.mp3";
 const BACKGROUND_VOLUME = 0.45;
+const MUTE_STORAGE_KEY = "hawi-background-muted";
 
 type WindowWithWebkit = Window &
   typeof globalThis & {
@@ -13,6 +14,59 @@ let decodedBuffer: AudioBuffer | null = null;
 let bufferPromise: Promise<AudioBuffer | null> | null = null;
 let interactionBound = false;
 let isPlaying = false;
+let isMuted = false;
+let mutedInitialized = false;
+const muteListeners = new Set<() => void>();
+
+function initMutedFromStorage(): void {
+  if (mutedInitialized || typeof window === "undefined") return;
+  mutedInitialized = true;
+  try {
+    isMuted = localStorage.getItem(MUTE_STORAGE_KEY) === "true";
+  } catch {
+    isMuted = false;
+  }
+}
+
+function emitMuteChange(): void {
+  muteListeners.forEach((listener) => listener());
+}
+
+function applyGain(): void {
+  if (!gainNode || !audioContext) return;
+  const volume = isMuted ? 0 : BACKGROUND_VOLUME;
+  gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+}
+
+export function subscribeIntroBackgroundMuted(listener: () => void): () => void {
+  muteListeners.add(listener);
+  return () => {
+    muteListeners.delete(listener);
+  };
+}
+
+export function getIntroBackgroundMuted(): boolean {
+  initMutedFromStorage();
+  return isMuted;
+}
+
+export function setIntroBackgroundMuted(muted: boolean): void {
+  initMutedFromStorage();
+  if (isMuted === muted) return;
+  isMuted = muted;
+  try {
+    localStorage.setItem(MUTE_STORAGE_KEY, String(muted));
+  } catch {
+    // ignore storage errors
+  }
+  applyGain();
+  emitMuteChange();
+}
+
+export function toggleIntroBackgroundMuted(): boolean {
+  setIntroBackgroundMuted(!getIntroBackgroundMuted());
+  return isMuted;
+}
 
 function getAudioContext(): AudioContext | null {
   if (audioContext) return audioContext;
@@ -24,7 +78,8 @@ function getAudioContext(): AudioContext | null {
 
   audioContext = new Ctor();
   gainNode = audioContext.createGain();
-  gainNode.gain.value = BACKGROUND_VOLUME;
+  initMutedFromStorage();
+  applyGain();
   gainNode.connect(audioContext.destination);
   return audioContext;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { El_Messiri } from "next/font/google";
@@ -8,6 +8,7 @@ import { IntroGate } from "@/components/IntroGate";
 import { IntroMarqueeFrame } from "@/components/IntroMarqueeFrame";
 import { BatSwarmTransition } from "@/components/BatSwarmTransition";
 import { ensureIntroBackgroundPlaying } from "@/lib/introBackgroundAudio";
+import { hasIntroBeenCompleted, markIntroCompleted } from "@/lib/introSession";
 import "./intro-gate.css";
 
 const elMessiri = El_Messiri({
@@ -43,9 +44,16 @@ type Phase = "loading" | "ready" | "intro" | "bats" | "done";
 
 export function IntroGateOverlay() {
   const [mounted, setMounted] = useState(false);
-  const [phase, setPhase] = useState<Phase>("loading");
+  /** Default to done so returning visitors see the homepage immediately (SSR + first paint). */
+  const [phase, setPhase] = useState<Phase>("done");
   const [progress, setProgress] = useState(0);
   const [covered, setCovered] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!hasIntroBeenCompleted()) {
+      setPhase("loading");
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -109,7 +117,7 @@ export function IntroGateOverlay() {
     setPhase("intro");
   }, []);
 
-  const handleIntroComplete = useCallback(() => {
+  const handleZoomStart = useCallback(() => {
     setPhase("bats");
   }, []);
 
@@ -118,6 +126,7 @@ export function IntroGateOverlay() {
   }, []);
 
   const handleBatsComplete = useCallback(() => {
+    markIntroCompleted();
     setPhase("done");
   }, []);
 
@@ -146,7 +155,8 @@ export function IntroGateOverlay() {
               <IntroGate
                 key="intro"
                 revealMode="hold"
-                onComplete={handleIntroComplete}
+                onZoomStart={handleZoomStart}
+                onComplete={() => {}}
               />
             )}
             {phase === "bats" && (
