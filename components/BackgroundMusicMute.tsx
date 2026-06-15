@@ -11,7 +11,7 @@ import { useT } from "@/components/LocaleProvider";
 
 function VolumeOnIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -23,7 +23,7 @@ function VolumeOnIcon() {
 
 function VolumeOffIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -53,7 +53,7 @@ export function BackgroundMusicMute() {
     <button
       type="button"
       onClick={handleToggle}
-      className="fixed bottom-4 left-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-black/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/70"
+      className="fixed bottom-4 left-4 z-[60] inline-flex h-14 w-14 items-center justify-center rounded-full border border-purple-400/45 bg-black/50 text-purple-100 shadow-[0_0_20px_rgba(168,85,247,0.55),0_0_40px_rgba(124,58,237,0.35),0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-md transition hover:border-purple-300/60 hover:bg-black/60 hover:shadow-[0_0_28px_rgba(168,85,247,0.7),0_0_50px_rgba(124,58,237,0.45),0_8px_24px_rgba(0,0,0,0.45)] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/80 focus-visible:shadow-[0_0_32px_rgba(168,85,247,0.75),0_0_56px_rgba(124,58,237,0.5)]"
       aria-label={
         muted
           ? t("audio.unmute", "Unmute background music")

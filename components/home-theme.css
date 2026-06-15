@@ -178,8 +178,8 @@ html.dark .home-themed,
   animation: home-ray-pulse 7s ease-in-out infinite;
 }
 
-/* Skeletons along the hero base — left standing, right running. */
-.home-hero-skeletons {
+/* Intro trees along the hero base. */
+.home-hero-trees {
   position: absolute;
   left: 0;
   right: 0;
@@ -188,37 +188,37 @@ html.dark .home-themed,
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 0 clamp(0.75rem, 5vw, 4rem);
+  padding: 0 clamp(0.25rem, 3vw, 2rem);
   pointer-events: none;
 }
 
-.home-hero-skeleton {
+.home-hero-tree {
   display: block;
-  height: clamp(3.5rem, 10vw, 8rem);
+  height: clamp(7rem, 16vw, 13rem);
   width: auto;
   object-fit: contain;
   object-position: bottom;
-  opacity: 0.9;
-  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.45));
+  opacity: 0.88;
+  filter: brightness(0.72) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.55));
 }
 
-.home-hero-skeleton--left {
-  margin-right: clamp(0rem, 2vw, 1.5rem);
+.home-hero-tree--left {
+  margin-left: clamp(-1.5rem, -2vw, -0.5rem);
 }
 
-.home-hero-skeleton--right {
-  margin-left: clamp(0rem, 2vw, 1.5rem);
+.home-hero-tree--right {
+  margin-right: clamp(-1.5rem, -2vw, -0.5rem);
 }
 
 @media (max-width: 768px) {
-  .home-hero-skeletons {
+  .home-hero-trees {
     bottom: 2rem;
-    padding: 0 0.5rem;
+    padding: 0;
   }
 
-  .home-hero-skeleton {
-    height: 3rem;
-    opacity: 0.8;
+  .home-hero-tree {
+    height: clamp(5rem, 14vw, 7rem);
+    opacity: 0.75;
   }
 }
 
