@@ -928,3 +928,27 @@
 .intro-ready-cta {
   margin-top: 0.25rem;
 }
+
+/* ── Terms of use gate (after "ready") ── */
+.intro-terms-content {
+  max-width: min(100%, 36rem);
+}
+
+.intro-terms-body {
+  margin: 0;
+  padding: 0 0.35rem;
+  max-width: 28rem;
+  font-size: clamp(1rem, 2.8vw, 1.2rem);
+  font-weight: 600;
+  line-height: 1.85;
+  text-align: center;
+  color: rgba(245, 235, 255, 0.94);
+}
+
+.intro-terms-cta .intro-gate-cta-label {
+  font-size: clamp(0.9rem, 2.6vw, 1.05rem);
+  line-height: 1.5;
+  white-space: normal;
+  max-width: 22rem;
+  text-align: center;
+}

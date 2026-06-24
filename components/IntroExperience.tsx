@@ -26,7 +26,7 @@ const elMessiri = El_Messiri({
 
 const MIN_LOADING_MS = 700;
 
-type Phase = "loading" | "ready" | "sceneLoading" | "intro" | "bats" | "done";
+type Phase = "loading" | "ready" | "terms" | "sceneLoading" | "intro" | "bats" | "done";
 
 export function IntroExperience() {
   const router = useRouter();
@@ -107,7 +107,10 @@ export function IntroExperience() {
   }, [phase, skipIntro]);
 
   const handleReady = useCallback(() => {
-    // Unlock audio synchronously inside the click gesture, then start playback.
+    setPhase("terms");
+  }, []);
+
+  const handleTermsAccept = useCallback(() => {
     unlockIntroBackgroundAudio();
     setPhase("sceneLoading");
   }, []);
@@ -141,7 +144,10 @@ export function IntroExperience() {
   }, [router]);
 
   const showBackdrop =
-    phase === "loading" || phase === "ready" || phase === "sceneLoading";
+    phase === "loading" ||
+    phase === "ready" ||
+    phase === "terms" ||
+    phase === "sceneLoading";
 
   if (skipIntro || phase === "done") {
     return null;
@@ -169,6 +175,9 @@ export function IntroExperience() {
             )}
             {phase === "ready" && (
               <IntroReadyGate key="ready" onReady={handleReady} />
+            )}
+            {phase === "terms" && (
+              <IntroTermsGate key="terms" onAccept={handleTermsAccept} />
             )}
             {phase === "sceneLoading" && (
               <IntroLoadingScreen
@@ -232,6 +241,62 @@ function IntroLoadingScreen({
           {message} {progress}%
         </p>
       </div>
+    </motion.div>
+  );
+}
+
+function IntroTermsGate({ onAccept }: { onAccept: () => void }) {
+  return (
+    <motion.div
+      className={`intro-ready intro-terms ${elMessiri.className}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="شروط الاستخدام"
+    >
+      <div className="intro-ready-glow" aria-hidden />
+      <motion.div
+        className="intro-ready-content intro-terms-content"
+        initial={{ opacity: 0, y: 18, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+      >
+        <IntroMarqueeFrame>
+          <div className="intro-sign-ornament" aria-hidden>
+            <span className="intro-sign-ornament-ring" />
+            <span className="intro-sign-ornament-core">✦</span>
+          </div>
+
+          <h1 className="intro-sign-title">تنبيه هام</h1>
+
+          <div className={`intro-sign-divider ${elMessiri.className}`} aria-hidden>
+            <span className="intro-sign-divider-line" />
+            <span className="intro-sign-divider-gem">◆</span>
+            <span className="intro-sign-divider-line" />
+          </div>
+
+          <p className={`intro-terms-body ${elMessiri.className}`}>
+            أتعهد باحترام كل الشروط والضوابط الخاصة بالمنصة في الحفاظ على المحتوى
+            العلمي للناشر وعدم نشر أي محتوى تعليمي بدون إذن مسبق.
+          </p>
+        </IntroMarqueeFrame>
+
+        <button
+          type="button"
+          onClick={onAccept}
+          className={`intro-gate-cta intro-ready-cta intro-terms-cta ${elMessiri.className}`}
+        >
+          <span className="intro-gate-cta-bg" aria-hidden />
+          <span className="intro-gate-cta-border" aria-hidden />
+          <span className="intro-gate-cta-label">
+
+          موافق علي الشروط والضوابط</span>
+        </button>
+        <span className="intro-gate-cta-diamond" aria-hidden />
+      </motion.div>
     </motion.div>
   );
 }
