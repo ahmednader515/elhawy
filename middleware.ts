@@ -5,11 +5,26 @@ import { INTRO_COOKIE_NAME } from "@/lib/introImages";
 export default withAuth(
   function middleware(req) {
     const path = req.nextUrl.pathname;
+    const isLoggedIn = !!req.nextauth.token;
+
+    // Logged-in users always use the homepage — never the first-visit intro.
+    if (isLoggedIn) {
+      if (path === "/intro") {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+      if (path === "/") {
+        return NextResponse.next();
+      }
+    }
 
     // First-time visitors enter via /intro; after completion a short-lived cookie
     // lets router.replace("/") reach the homepage without a redirect loop.
     if (path === "/" && req.cookies.get(INTRO_COOKIE_NAME)?.value !== "1") {
       return NextResponse.redirect(new URL("/intro", req.url));
+    }
+
+    if (path === "/intro") {
+      return NextResponse.next();
     }
 
     if (!path.startsWith("/dashboard")) {
@@ -63,5 +78,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*"],
+  matcher: ["/", "/intro", "/dashboard/:path*"],
 };

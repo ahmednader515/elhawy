@@ -16,10 +16,14 @@ import {
   userHasActivePlatformSubscription,
   getLatestPlatformSubscriptionExpiry,
 } from "@/lib/db";
-import { getServerTranslator } from "@/lib/i18n/server";
+import { getServerTranslator, getLocaleFromCookie } from "@/lib/i18n/server";
+import { getStudentGamificationProfile, getLeaderboard, getCourseProgress } from "@/lib/gamification";
+import { StudentWizardProfileCard } from "@/components/dashboard/StudentWizardProfileCard";
+import { GlobalLeaderboardSection } from "@/components/dashboard/GlobalLeaderboardSection";
 import { MyCoursesSection } from "./MyCoursesSection";
 import { ActivateCodeSection } from "./ActivateCodeSection";
 import { StudentSubscriptionsPanel } from "./StudentSubscriptionsPanel";
+import "@/components/dashboard-wizard.css";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -169,9 +173,29 @@ export default async function DashboardPage() {
       subscriptionsFeature = false;
     }
 
+    const locale = await getLocaleFromCookie();
+    const progressEntries = await Promise.all(
+      enrolledCourses.map(async (c) => {
+        const progress = await getCourseProgress(session.user.id, c.id);
+        return [c.id, progress.percent] as const;
+      }),
+    );
+    const progressByCourseId = Object.fromEntries(progressEntries);
+
+    const [wizardProfile, leaderboard] = await Promise.all([
+      getStudentGamificationProfile(session.user.id, locale),
+      getLeaderboard({
+        scope: "global",
+        limit: 10,
+        userId: session.user.id,
+        locale,
+      }),
+    ]);
+
     return (
-      <div className="space-y-8">
-        <div className="grid gap-6 sm:grid-cols-2">
+      <div className="dashboard-wizard space-y-8">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <StudentWizardProfileCard profile={wizardProfile} />
           <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]">
             <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
               {t("dashboard.page.greetingComma", "Welcome,")} {session.user.name}
@@ -211,6 +235,12 @@ export default async function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        <GlobalLeaderboardSection
+          entries={leaderboard.entries}
+          callerEntry={leaderboard.callerEntry}
+          currentUserId={session.user.id}
+        />
 
         <div className="grid gap-6 sm:grid-cols-2">
           <ActivateCodeSection />
@@ -289,7 +319,7 @@ export default async function DashboardPage() {
           </section>
         ) : null}
 
-        <MyCoursesSection courses={enrolledCourses} />
+        <MyCoursesSection courses={enrolledCourses} progressByCourseId={progressByCourseId} />
       </div>
     );
   }
@@ -467,6 +497,38 @@ export default async function DashboardPage() {
                   {t(
                     "dashboard.page.privateMessagesWithStudentsMeta",
                     "Chat with a student; send messages, images, or files",
+                  )}
+                </p>
+              </Link>
+            </>
+          )}
+          {isAdmin && (
+            <>
+              <Link
+                href="/dashboard/gamification/leaderboard"
+                className="flex min-h-[200px] flex-col justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center transition hover:border-[var(--color-primary)]/30"
+              >
+                <h3 className="font-semibold text-[var(--color-foreground)]">
+                  {t("dashboard.page.adminLeaderboardCardTitle", "Student leaderboard")}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">
+                  {t(
+                    "dashboard.page.adminLeaderboardCardMeta",
+                    "Top students by magic points with contact numbers",
+                  )}
+                </p>
+              </Link>
+              <Link
+                href="/dashboard/gamification/points"
+                className="flex min-h-[200px] flex-col justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center transition hover:border-[var(--color-primary)]/30"
+              >
+                <h3 className="font-semibold text-[var(--color-foreground)]">
+                  {t("dashboard.page.pointsControlCardTitle", "Points control")}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">
+                  {t(
+                    "dashboard.page.pointsControlCardMeta",
+                    "Set how many points students earn per action",
                   )}
                 </p>
               </Link>

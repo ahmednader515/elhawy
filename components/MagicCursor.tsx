@@ -125,8 +125,34 @@ export function MagicCursor() {
       }
     };
 
+    const syncFullscreenCursor = () => {
+      const inNativeFullscreen = Boolean(
+        document.fullscreenElement ??
+          (document as Document & { webkitFullscreenElement?: Element | null }).webkitFullscreenElement
+      );
+      const inPlyrFallback = Boolean(document.querySelector(".plyr--fullscreen-fallback"));
+      const inFullscreen = inNativeFullscreen || inPlyrFallback;
+      if (inFullscreen) {
+        root.classList.remove("magic-cursor-active");
+        visibleRef.current = false;
+        if (wandRef.current) wandRef.current.style.opacity = "0";
+      } else {
+        root.classList.add("magic-cursor-active");
+      }
+    };
+
     onVisibility();
     document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("fullscreenchange", syncFullscreenCursor);
+    document.addEventListener("webkitfullscreenchange", syncFullscreenCursor);
+
+    const plyrObserver = new MutationObserver(syncFullscreenCursor);
+    plyrObserver.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    syncFullscreenCursor();
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerdown", onDown, { passive: true });
     document.addEventListener("pointerleave", hide);
@@ -135,6 +161,9 @@ export function MagicCursor() {
     return () => {
       if (wandRafRef.current) window.cancelAnimationFrame(wandRafRef.current);
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("fullscreenchange", syncFullscreenCursor);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreenCursor);
+      plyrObserver.disconnect();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
       document.removeEventListener("pointerleave", hide);

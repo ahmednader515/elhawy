@@ -1,0 +1,244 @@
+/* ============================================================
+   Playing-card course tiles (wizard / academy theme)
+   ============================================================ */
+
+.playing-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 5 / 7;
+  max-width: 18rem;
+  width: 100%;
+  margin-inline: auto;
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  transform: rotate(var(--card-tilt, 0deg));
+  transition:
+    transform 0.35s ease,
+    filter 0.35s ease;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.45));
+}
+
+.playing-card:nth-child(4n + 1) {
+  --card-tilt: -1.25deg;
+}
+.playing-card:nth-child(4n + 2) {
+  --card-tilt: 0.85deg;
+}
+.playing-card:nth-child(4n + 3) {
+  --card-tilt: -0.55deg;
+}
+.playing-card:nth-child(4n) {
+  --card-tilt: 1.1deg;
+}
+
+.playing-card:hover {
+  --card-tilt: 0deg;
+  transform: translateY(-6px) rotate(0deg) scale(1.02);
+  filter: drop-shadow(0 20px 36px rgba(88, 28, 135, 0.45));
+}
+
+.playing-card-face {
+  position: relative;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: inherit;
+  border: 2px solid rgba(212, 168, 83, 0.55);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(124, 58, 237, 0.22) 0%, transparent 55%),
+    radial-gradient(90% 70% at 50% 100%, rgba(88, 28, 135, 0.35) 0%, transparent 60%),
+    linear-gradient(165deg, #1a0f2e 0%, #120a1f 42%, #0a0612 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(250, 245, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Inner gold filigree frame */
+.playing-card-face::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 9px;
+  border: 1px solid rgba(212, 168, 83, 0.28);
+  pointer-events: none;
+  box-shadow: inset 0 0 18px rgba(124, 58, 237, 0.12);
+}
+
+.playing-card-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 8px,
+      rgba(212, 168, 83, 0.03) 8px,
+      rgba(212, 168, 83, 0.03) 9px
+    );
+}
+
+.playing-card-corner {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  line-height: 1;
+  color: #d4a853;
+  text-shadow: 0 0 8px rgba(212, 168, 83, 0.35);
+  pointer-events: none;
+}
+
+.playing-card-corner--tl {
+  top: 0.65rem;
+  inset-inline-start: 0.7rem;
+}
+
+.playing-card-corner--br {
+  bottom: 0.65rem;
+  inset-inline-end: 0.7rem;
+  transform: rotate(180deg);
+}
+
+.playing-card-rank {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.playing-card-suit {
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+
+.playing-card-art {
+  position: relative;
+  z-index: 1;
+  margin: 2.1rem 1.15rem 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 168, 83, 0.45);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(124, 58, 237, 0.35), rgba(10, 6, 18, 0.9));
+  box-shadow:
+    0 0 0 3px rgba(26, 15, 46, 0.9),
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    inset 0 0 20px rgba(124, 58, 237, 0.15);
+}
+
+.playing-card-art img {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.playing-card-art-placeholder {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.25rem;
+  opacity: 0.55;
+}
+
+.playing-card-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0.85rem 1rem 1rem;
+  text-align: center;
+}
+
+.playing-card-category {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(196, 181, 253, 0.85);
+}
+
+.playing-card-title {
+  margin-top: 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #faf5ff;
+  transition: color 0.2s ease;
+}
+
+.playing-card:hover .playing-card-title {
+  color: #e9d5ff;
+}
+
+.playing-card-desc {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(216, 180, 254, 0.65);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.playing-card-footer {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.playing-card-chip {
+  border-radius: 9999px;
+  border: 1px solid rgba(212, 168, 83, 0.35);
+  background: rgba(26, 15, 46, 0.75);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #f2e4c8;
+  white-space: nowrap;
+}
+
+.playing-card-chip--price {
+  border-color: rgba(212, 168, 83, 0.55);
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.55), rgba(26, 15, 46, 0.9));
+}
+
+.playing-card-chip--free {
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+
+.playing-card-chip--muted {
+  color: rgba(216, 180, 254, 0.7);
+  border-color: rgba(124, 58, 237, 0.35);
+}
+
+.playing-card-chip--rating {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fcd34d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playing-card {
+    transition: none;
+  }
+
+  .playing-card:hover {
+    transform: rotate(var(--card-tilt, 0deg));
+  }
+}

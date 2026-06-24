@@ -11,6 +11,19 @@ html.magic-cursor-active summary {
   cursor: none !important;
 }
 
+/* Native fullscreen is a separate top layer; the magic wand stays in the page root. */
+:fullscreen,
+:fullscreen *,
+:-webkit-full-screen,
+:-webkit-full-screen * {
+  cursor: auto !important;
+}
+
+.plyr--fullscreen-fallback,
+.plyr--fullscreen-fallback * {
+  cursor: auto !important;
+}
+
 .magic-cursor-root {
   position: fixed;
   inset: 0;

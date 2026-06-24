@@ -4380,6 +4380,7 @@ export async function deleteAllHomeworkSubmissions(): Promise<void> {
 }
 
 // ----- QuizAttempt (يتطلب تشغيل scripts/add-quiz-attempts.sql) -----
+/** Every started quiz session in the course (including in-progress 0/0 rows). */
 export async function countQuizAttemptsByUserAndCourse(userId: string, courseId: string): Promise<number> {
   const rows = await sql`
     SELECT COUNT(*)::int as c FROM "QuizAttempt" qa
@@ -4387,6 +4388,24 @@ export async function countQuizAttemptsByUserAndCourse(userId: string, courseId:
     WHERE qa.user_id = ${userId} AND q.course_id = ${courseId}
   `;
   return Number((rows[0] as { c: number })?.c ?? 0);
+}
+
+/** In-progress attempt started via /start but not submitted yet (0/0). */
+export async function getInProgressQuizAttemptId(
+  userId: string,
+  quizId: string,
+): Promise<string | null> {
+  const rows = await sql`
+    SELECT qa.id
+    FROM "QuizAttempt" qa
+    WHERE qa.user_id = ${userId}
+      AND qa.quiz_id = ${quizId}
+      AND qa.total_questions = 0
+    ORDER BY qa.created_at DESC
+    LIMIT 1
+  `;
+  const id = (rows[0] as { id?: string } | undefined)?.id;
+  return id ? String(id) : null;
 }
 
 export async function createQuizAttempt(
@@ -4869,4 +4888,435 @@ export async function createMessage(data: {
   await sql`UPDATE "Conversation" SET updated_at = NOW() WHERE id = ${data.conversation_id}`;
   const rows = await sql`SELECT * FROM "Message" WHERE id = ${id} LIMIT 1`;
   return rowToCamel(rows[0] as Record<string, unknown>) as Message;
+}
+
+// ----- Student gamification (scripts/add-student-gamification.sql) -----
+let gamificationSchemaAvailable = true;
+
+export async function ensureGamificationSchema(): Promise<void> {
+  return ensureOnce("ensureGamificationSchema", async () => {
+    try {
+      await sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS experience_points INTEGER NOT NULL DEFAULT 0`;
+      await sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS wizard_level INTEGER NOT NULL DEFAULT 1`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "LessonCompletion" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          lesson_id TEXT NOT NULL REFERENCES "Lesson"(id) ON DELETE CASCADE,
+          course_id TEXT NOT NULL REFERENCES "Course"(id) ON DELETE CASCADE,
+          completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT lesson_completion_unique_user_lesson UNIQUE (user_id, lesson_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "LessonCompletion_user_id_idx" ON "LessonCompletion"(user_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS "LessonCompletion_course_id_idx" ON "LessonCompletion"(course_id)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "CourseCompletion" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          course_id TEXT NOT NULL REFERENCES "Course"(id) ON DELETE CASCADE,
+          completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT course_completion_unique_user_course UNIQUE (user_id, course_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "CourseCompletion_user_id_idx" ON "CourseCompletion"(user_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS "CourseCompletion_course_id_idx" ON "CourseCompletion"(course_id)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "PointEvent" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          event_type TEXT NOT NULL,
+          reference_id TEXT NOT NULL,
+          course_id TEXT REFERENCES "Course"(id) ON DELETE SET NULL,
+          points INTEGER NOT NULL,
+          metadata JSONB,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT point_event_unique_user_type_ref UNIQUE (user_id, event_type, reference_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "PointEvent_user_id_idx" ON "PointEvent"(user_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS "PointEvent_course_id_idx" ON "PointEvent"(course_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS "PointEvent_created_at_idx" ON "PointEvent"(created_at DESC)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "QuizCompletion" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          quiz_id TEXT NOT NULL REFERENCES "Quiz"(id) ON DELETE CASCADE,
+          course_id TEXT NOT NULL REFERENCES "Course"(id) ON DELETE CASCADE,
+          completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT quiz_completion_unique_user_quiz UNIQUE (user_id, quiz_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "QuizCompletion_user_id_idx" ON "QuizCompletion"(user_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS "QuizCompletion_course_id_idx" ON "QuizCompletion"(course_id)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "GamificationPointRule" (
+          event_type TEXT PRIMARY KEY,
+          points INTEGER NOT NULL CHECK (points >= 0 AND points <= 10000),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      gamificationSchemaAvailable = true;
+    } catch {
+      try {
+        await sql`SELECT 1 FROM "PointEvent" LIMIT 1`;
+        gamificationSchemaAvailable = true;
+      } catch {
+        gamificationSchemaAvailable = false;
+      }
+    }
+  });
+}
+
+export async function getUserGamificationRow(userId: string): Promise<{
+  experiencePoints: number;
+  wizardLevel: number;
+  name: string;
+} | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`
+    SELECT name, experience_points, wizard_level FROM "User" WHERE id = ${userId} LIMIT 1
+  `;
+  const r = rows[0] as { name?: string; experience_points?: number; wizard_level?: number } | undefined;
+  if (!r) return null;
+  return {
+    name: String(r.name ?? ""),
+    experiencePoints: Number(r.experience_points ?? 0),
+    wizardLevel: Number(r.wizard_level ?? 1),
+  };
+}
+
+export async function tryInsertPointEvent(data: {
+  userId: string;
+  eventType: string;
+  referenceId: string;
+  courseId?: string | null;
+  points: number;
+  metadata?: Record<string, unknown> | null;
+}): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const id = generateId();
+  const metadataJson = data.metadata ? JSON.stringify(data.metadata) : null;
+  try {
+    const rows = await sql`
+      INSERT INTO "PointEvent" (id, user_id, event_type, reference_id, course_id, points, metadata, created_at)
+      VALUES (
+        ${id},
+        ${data.userId},
+        ${data.eventType},
+        ${data.referenceId},
+        ${data.courseId ?? null},
+        ${data.points},
+        ${metadataJson}::jsonb,
+        NOW()
+      )
+      ON CONFLICT (user_id, event_type, reference_id) DO NOTHING
+      RETURNING id
+    `;
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function addUserExperiencePoints(userId: string, points: number, newLevel: number): Promise<void> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable || points <= 0) return;
+  await sql`
+    UPDATE "User"
+    SET experience_points = experience_points + ${points},
+        wizard_level = ${newLevel},
+        updated_at = NOW()
+    WHERE id = ${userId}
+  `;
+}
+
+export async function insertLessonCompletionIfNotExists(
+  userId: string,
+  lessonId: string,
+  courseId: string,
+): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const id = generateId();
+  const rows = await sql`
+    INSERT INTO "LessonCompletion" (id, user_id, lesson_id, course_id, completed_at)
+    VALUES (${id}, ${userId}, ${lessonId}, ${courseId}, NOW())
+    ON CONFLICT (user_id, lesson_id) DO NOTHING
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+export async function hasLessonCompletion(userId: string, lessonId: string): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const rows = await sql`
+    SELECT 1 FROM "LessonCompletion" WHERE user_id = ${userId} AND lesson_id = ${lessonId} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+export async function insertCourseCompletionIfNotExists(
+  userId: string,
+  courseId: string,
+): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const id = generateId();
+  const rows = await sql`
+    INSERT INTO "CourseCompletion" (id, user_id, course_id, completed_at)
+    VALUES (${id}, ${userId}, ${courseId}, NOW())
+    ON CONFLICT (user_id, course_id) DO NOTHING
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+export async function hasCourseCompletion(userId: string, courseId: string): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const rows = await sql`
+    SELECT 1 FROM "CourseCompletion" WHERE user_id = ${userId} AND course_id = ${courseId} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+export async function getCompletedLessonIdsForCourse(userId: string, courseId: string): Promise<string[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = await sql`
+    SELECT lesson_id FROM "LessonCompletion"
+    WHERE user_id = ${userId} AND course_id = ${courseId}
+  `;
+  return (rows as { lesson_id: string }[]).map((r) => r.lesson_id);
+}
+
+export async function insertQuizPassIfNotExists(
+  userId: string,
+  quizId: string,
+  courseId: string,
+): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const id = generateId();
+  const rows = await sql`
+    INSERT INTO "QuizCompletion" (id, user_id, quiz_id, course_id, completed_at)
+    VALUES (${id}, ${userId}, ${quizId}, ${courseId}, NOW())
+    ON CONFLICT (user_id, quiz_id) DO NOTHING
+    RETURNING id
+  `;
+  return rows.length > 0;
+}
+
+export async function getPassedQuizIdsForCourse(userId: string, courseId: string): Promise<string[]> {
+  await ensureGamificationSchema();
+
+  const completionRows = gamificationSchemaAvailable
+    ? await sql`
+        SELECT quiz_id FROM "QuizCompletion"
+        WHERE user_id = ${userId} AND course_id = ${courseId}
+      `
+    : [];
+
+  const attemptRows = await sql`
+    SELECT DISTINCT qa.quiz_id
+    FROM "QuizAttempt" qa
+    JOIN "Quiz" q ON q.id = qa.quiz_id
+    WHERE qa.user_id = ${userId}
+      AND q.course_id = ${courseId}
+      AND qa.total_questions > 0
+      AND (qa.score::float / qa.total_questions::float) >= 0.6
+  `;
+
+  const ids = new Set<string>();
+  for (const row of completionRows as { quiz_id: string }[]) {
+    if (row.quiz_id) ids.add(String(row.quiz_id));
+  }
+  for (const row of attemptRows as { quiz_id: string }[]) {
+    if (row.quiz_id) ids.add(String(row.quiz_id));
+  }
+
+  if (gamificationSchemaAvailable) {
+    for (const quizId of ids) {
+      await insertQuizPassIfNotExists(userId, quizId, courseId);
+    }
+  }
+
+  return [...ids];
+}
+
+export async function getQuizzesByCourseId(courseId: string): Promise<Array<{ id: string }>> {
+  const rows = await sql`SELECT id FROM "Quiz" WHERE course_id = ${courseId}`;
+  return rows as Array<{ id: string }>;
+}
+
+export type LeaderboardEntry = {
+  userId: string;
+  name: string;
+  experiencePoints: number;
+  wizardLevel: number;
+  rank: number;
+  studentNumber?: string | null;
+  guardianNumber?: string | null;
+};
+
+export async function getGlobalLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = await sql`
+    SELECT id, name, experience_points, wizard_level, student_number, guardian_number
+    FROM "User"
+    WHERE role = 'STUDENT' AND experience_points > 0
+    ORDER BY experience_points DESC, name ASC
+    LIMIT ${limit}
+  `;
+  return (rows as Record<string, unknown>[]).map((r, i) => ({
+    userId: String(r.id),
+    name: String(r.name ?? ""),
+    experiencePoints: Number(r.experience_points ?? 0),
+    wizardLevel: Number(r.wizard_level ?? 1),
+    rank: i + 1,
+    studentNumber: (r.student_number as string | null | undefined) ?? null,
+    guardianNumber: (r.guardian_number as string | null | undefined) ?? null,
+  }));
+}
+
+export async function getCourseLeaderboard(courseId: string, limit: number): Promise<LeaderboardEntry[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = await sql`
+    SELECT u.id, u.name, u.wizard_level,
+           COALESCE(SUM(pe.points), 0)::int AS course_xp
+    FROM "User" u
+    JOIN "PointEvent" pe ON pe.user_id = u.id AND pe.course_id = ${courseId}
+    WHERE u.role = 'STUDENT'
+    GROUP BY u.id, u.name, u.wizard_level
+    HAVING COALESCE(SUM(pe.points), 0) > 0
+    ORDER BY course_xp DESC, u.name ASC
+    LIMIT ${limit}
+  `;
+  return (rows as Record<string, unknown>[]).map((r, i) => ({
+    userId: String(r.id),
+    name: String(r.name ?? ""),
+    experiencePoints: Number(r.course_xp ?? 0),
+    wizardLevel: Number(r.wizard_level ?? 1),
+    rank: i + 1,
+  }));
+}
+
+export async function getGlobalStudentRank(userId: string): Promise<number | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`
+    WITH ranked AS (
+      SELECT id, RANK() OVER (ORDER BY experience_points DESC, name ASC) AS rnk
+      FROM "User"
+      WHERE role = 'STUDENT'
+    )
+    SELECT rnk FROM ranked WHERE id = ${userId} LIMIT 1
+  `;
+  const r = rows[0] as { rnk?: number } | undefined;
+  return r?.rnk != null ? Number(r.rnk) : null;
+}
+
+export async function getCourseStudentRank(userId: string, courseId: string): Promise<number | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`
+    WITH sums AS (
+      SELECT u.id, COALESCE(SUM(pe.points), 0)::int AS course_xp
+      FROM "User" u
+      LEFT JOIN "PointEvent" pe ON pe.user_id = u.id AND pe.course_id = ${courseId}
+      WHERE u.role = 'STUDENT'
+      GROUP BY u.id
+    ),
+    ranked AS (
+      SELECT id, RANK() OVER (ORDER BY course_xp DESC) AS rnk FROM sums WHERE course_xp > 0
+    )
+    SELECT rnk FROM ranked WHERE id = ${userId} LIMIT 1
+  `;
+  const r = rows[0] as { rnk?: number } | undefined;
+  return r?.rnk != null ? Number(r.rnk) : null;
+}
+
+export async function getCourseXpForUser(userId: string, courseId: string): Promise<number> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return 0;
+  const rows = await sql`
+    SELECT COALESCE(SUM(points), 0)::int AS xp
+    FROM "PointEvent"
+    WHERE user_id = ${userId} AND course_id = ${courseId}
+  `;
+  return Number((rows[0] as { xp?: number })?.xp ?? 0);
+}
+
+export async function countGlobalLeaderboardStudents(): Promise<number> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return 0;
+  const rows = await sql`
+    SELECT COUNT(*)::int AS c FROM "User" WHERE role = 'STUDENT' AND experience_points > 0
+  `;
+  return Number((rows[0] as { c?: number })?.c ?? 0);
+}
+
+const GAMIFICATION_POINT_DEFAULTS: Record<string, number> = {
+  LESSON_COMPLETE: 25,
+  QUIZ_PASS: 40,
+  QUIZ_HIGH_SCORE: 20,
+  QUIZ_PERFECT: 30,
+  COURSE_COMPLETE: 150,
+};
+
+async function seedGamificationPointRulesIfEmpty(): Promise<void> {
+  const existing = await sql`SELECT event_type FROM "GamificationPointRule" LIMIT 1`;
+  if (existing.length > 0) return;
+  for (const [eventType, points] of Object.entries(GAMIFICATION_POINT_DEFAULTS)) {
+    await sql`
+      INSERT INTO "GamificationPointRule" (event_type, points, updated_at)
+      VALUES (${eventType}, ${points}, NOW())
+      ON CONFLICT (event_type) DO NOTHING
+    `;
+  }
+}
+
+export async function getGamificationPointRules(): Promise<Record<string, number>> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return { ...GAMIFICATION_POINT_DEFAULTS };
+  await seedGamificationPointRulesIfEmpty();
+  const rows = await sql`SELECT event_type, points FROM "GamificationPointRule"`;
+  const rules: Record<string, number> = { ...GAMIFICATION_POINT_DEFAULTS };
+  for (const row of rows as Array<{ event_type?: string; points?: number }>) {
+    const key = String(row.event_type ?? "");
+    const pts = Number(row.points);
+    if (key && Number.isFinite(pts) && pts >= 0) rules[key] = Math.round(pts);
+  }
+  return rules;
+}
+
+export async function updateGamificationPointRules(
+  updates: Partial<Record<string, number>>,
+): Promise<Record<string, number>> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) {
+    throw new Error("GAMIFICATION_SCHEMA_UNAVAILABLE");
+  }
+  await seedGamificationPointRulesIfEmpty();
+  for (const [eventType, points] of Object.entries(updates)) {
+    if (!(eventType in GAMIFICATION_POINT_DEFAULTS)) continue;
+    const pts = Number(points);
+    if (!Number.isFinite(pts) || pts < 0 || pts > 10_000) {
+      throw new Error(`INVALID_POINTS:${eventType}`);
+    }
+    await sql`
+      INSERT INTO "GamificationPointRule" (event_type, points, updated_at)
+      VALUES (${eventType}, ${Math.round(pts)}, NOW())
+      ON CONFLICT (event_type) DO UPDATE SET
+        points = EXCLUDED.points,
+        updated_at = NOW()
+    `;
+  }
+  return getGamificationPointRules();
 }

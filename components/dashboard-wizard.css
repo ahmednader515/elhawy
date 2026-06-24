@@ -1,0 +1,174 @@
+/* Wizard-themed student dashboard accents */
+.dashboard-wizard {
+  --wizard-purple: #7c3aed;
+  --wizard-purple-soft: rgba(124, 58, 237, 0.15);
+  --wizard-gold: #d4a853;
+  --wizard-parchment: #f2e4c8;
+}
+
+.wizard-profile-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(124, 58, 237, 0.12) 0%, transparent 55%),
+    var(--color-surface);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+.wizard-profile-card::before {
+  content: "✦";
+  position: absolute;
+  top: 0.75rem;
+  inset-inline-end: 1rem;
+  font-size: 1.25rem;
+  color: var(--wizard-gold);
+  opacity: 0.65;
+}
+
+.wizard-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(212, 168, 83, 0.45);
+  background: rgba(212, 168, 83, 0.12);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--wizard-gold);
+}
+
+.wizard-xp-bar {
+  margin-top: 0.85rem;
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--color-border);
+}
+
+.wizard-xp-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d28d9, #a855f7, #d4a853);
+  transition: width 0.5s ease;
+}
+
+.wizard-leaderboard {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.wizard-leaderboard-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--wizard-purple) 14%, var(--color-surface));
+}
+
+.wizard-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wizard-leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+.wizard-leaderboard-row.is-me {
+  background: color-mix(in srgb, var(--wizard-purple) 12%, var(--color-surface));
+}
+
+.wizard-rank {
+  flex-shrink: 0;
+  width: 2rem;
+  text-align: center;
+  font-weight: 700;
+  color: var(--wizard-gold);
+}
+
+.wizard-complete-btn {
+  border-radius: var(--radius-btn);
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.9), rgba(124, 58, 237, 0.75));
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #faf5ff;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.wizard-complete-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.wizard-complete-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+  background: var(--color-border);
+  color: var(--color-muted);
+  border-color: var(--color-border);
+}
+
+.wizard-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 10050;
+  display: flex;
+  max-width: min(92vw, 24rem);
+  align-items: flex-start;
+  gap: 0.75rem;
+  transform: translateX(-50%);
+  border-radius: var(--radius-card);
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  background:
+    radial-gradient(100% 120% at 0% 0%, rgba(124, 58, 237, 0.2), transparent 60%),
+    rgba(10, 10, 10, 0.94);
+  padding: 1rem 1.15rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  color: #faf5ff;
+}
+
+.wizard-toast-gem {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  color: var(--wizard-gold);
+}
+
+.wizard-toast-message {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.wizard-toast-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(250, 245, 255, 0.8);
+}
+
+.wizard-course-progress {
+  margin-top: 1rem;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  padding: 0.85rem 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-xp-bar-fill {
+    transition: none;
+  }
+}

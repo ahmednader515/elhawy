@@ -27,7 +27,7 @@ export function HomeScrollBats() {
 
     const template = document.createElement("div");
     const templateRoot = createRoot(template);
-    templateRoot.render(<BatShape className="home-bat-svg home-bat-svg--static" />);
+    templateRoot.render(<BatShape className="home-bat-svg" />);
     let batMarkup = "";
 
     lastScrollY.current = window.scrollY;
@@ -46,27 +46,31 @@ export function HomeScrollBats() {
       const top = 5 + Math.random() * 70;
       const duration = 3.2 + Math.random() * 2;
       const drift = (Math.random() - 0.5) * 14;
+      const flap = 0.16 + Math.random() * 0.1;
 
       const host = document.createElement("div");
       host.className = "home-bat";
       host.style.top = `${top}%`;
       host.style.width = `${size}px`;
       host.style.height = `${size * 0.45}px`;
-      host.style.setProperty("--drift", `${drift}px`);
-      host.style.setProperty("--duration", `${duration}s`);
+      host.style.setProperty("--flap", `${flap}s`);
       host.innerHTML = batMarkup;
 
       layer.appendChild(host);
       countRef.current += 1;
 
-      host.addEventListener(
-        "animationend",
-        () => {
-          host.remove();
-          countRef.current -= 1;
-        },
-        { once: true },
+      const animation = host.animate(
+        [
+          { transform: "translate3d(110vw, 0, 0) rotate(-90deg)" },
+          { transform: `translate3d(-25vw, ${drift}px, 0) rotate(-90deg)` },
+        ],
+        { duration: duration * 1000, easing: "linear", fill: "forwards" },
       );
+
+      animation.onfinish = () => {
+        host.remove();
+        countRef.current -= 1;
+      };
     };
 
     const onScroll = () => {

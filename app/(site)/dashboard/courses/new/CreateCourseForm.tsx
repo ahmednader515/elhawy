@@ -21,17 +21,13 @@ export function CreateCourseForm() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [form, setForm] = useState({
     titleAr: "",
-    titleEn: "",
     descriptionAr: "",
-    descriptionEn: "",
     shortDescAr: "",
-    shortDescEn: "",
     imageUrl: "",
     price: "",
     maxQuizAttempts: "",
     categoryId: "",
     categoryNameAr: "",
-    categoryNameEn: "",
   });
   const [lessons, setLessons] = useState<LessonRow[]>([{ title: "", videoUrl: "", content: "", pdfUrl: "", acceptsHomework: false }]);
 
@@ -201,7 +197,7 @@ export function CreateCourseForm() {
     setError("");
     setLoading(true);
     try {
-    const slug = slugify(form.titleEn || form.titleAr || "course");
+    const slug = slugify(form.titleAr || "course");
     const validLessons = lessons.filter((l) => l.title.trim());
     const validQuizzes = quizzes
       .filter((q) => q.title.trim())
@@ -242,17 +238,14 @@ export function CreateCourseForm() {
 
     const payload = {
       titleAr: form.titleAr.trim(),
-      titleEn: form.titleEn.trim(),
       slug,
       descriptionAr: form.descriptionAr.trim(),
-      descriptionEn: form.descriptionEn.trim(),
       shortDescAr: form.shortDescAr.trim() || undefined,
-      shortDescEn: form.shortDescEn.trim() || undefined,
       imageUrl: form.imageUrl.trim() || undefined,
       price: form.price ? parseFloat(form.price) : 0,
       maxQuizAttempts: form.maxQuizAttempts.trim() ? parseInt(form.maxQuizAttempts, 10) : null,
-      ...(form.categoryNameAr.trim() || form.categoryNameEn.trim()
-        ? { categoryNameAr: form.categoryNameAr.trim(), categoryNameEn: form.categoryNameEn.trim() }
+      ...(form.categoryNameAr.trim()
+        ? { categoryNameAr: form.categoryNameAr.trim() }
         : form.categoryId ? { categoryId: form.categoryId } : {}),
       lessons: validLessons.map((l) => ({
           title: l.title.trim(),
@@ -367,8 +360,8 @@ export function CreateCourseForm() {
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{t(`${Cf}.categoryOptional`)}</label>
             <p className="mt-1 text-xs text-[var(--color-muted)]">{t(`${Cf}.categoryHelpChooseOrNew`)}</p>
             <select
-              value={form.categoryNameAr.trim() || form.categoryNameEn.trim() ? "" : form.categoryId}
-              onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value, categoryNameAr: "", categoryNameEn: "" }))}
+              value={form.categoryNameAr.trim() ? "" : form.categoryId}
+              onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value, categoryNameAr: "" }))}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
             >
               <option value="">{t(`${Cf}.noCategoryOption`)}</option>
@@ -379,19 +372,11 @@ export function CreateCourseForm() {
               ))}
             </select>
             <div className="mt-2">
-              <label className="block text-xs text-[var(--color-muted)]">{t(`${Cf}.newCategoryBilingualHint`)}</label>
               <input
                 type="text"
                 value={form.categoryNameAr}
                 onChange={(e) => setForm((f) => ({ ...f, categoryNameAr: e.target.value, categoryId: "" }))}
                 placeholder={t(`${Cf}.newCategoryArabicPlaceholder`)}
-                className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm"
-              />
-              <input
-                type="text"
-                value={form.categoryNameEn}
-                onChange={(e) => setForm((f) => ({ ...f, categoryNameEn: e.target.value, categoryId: "" }))}
-                placeholder={t(`${Cf}.newCategoryEnglishLabel`)}
                 className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm"
               />
             </div>
@@ -439,16 +424,6 @@ export function CreateCourseForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--color-foreground)]">{t(`${Cf}.titleEnRequired`)}</label>
-            <input
-              type="text"
-              value={form.titleEn}
-              onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))}
-              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
-              required
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{t(`${Cf}.shortDescAr`)}</label>
             <input
               type="text"
@@ -459,30 +434,10 @@ export function CreateCourseForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--color-foreground)]">{t(`${Cf}.shortDescEn`)}</label>
-            <input
-              type="text"
-              maxLength={300}
-              value={form.shortDescEn}
-              onChange={(e) => setForm((f) => ({ ...f, shortDescEn: e.target.value }))}
-              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
-            />
-          </div>
-          <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{t(`${Cf}.fullDescArRequired`)}</label>
             <textarea
               value={form.descriptionAr}
               onChange={(e) => setForm((f) => ({ ...f, descriptionAr: e.target.value }))}
-              rows={4}
-              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-foreground)]">{t(`${Cf}.fullDescEnRequired`)}</label>
-            <textarea
-              value={form.descriptionEn}
-              onChange={(e) => setForm((f) => ({ ...f, descriptionEn: e.target.value }))}
               rows={4}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               required

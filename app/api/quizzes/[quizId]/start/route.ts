@@ -6,6 +6,7 @@ import {
   getEnrollment,
   countQuizAttemptsByUserAndCourse,
   createQuizAttemptReturningId,
+  getInProgressQuizAttemptId,
   hasFullCourseAccessAsStudent,
 } from "@/lib/db";
 
@@ -37,10 +38,14 @@ export async function POST(
       return NextResponse.json({ error: "غير مسجّل في هذه الدورة" }, { status: 403 });
     }
 
+    const existingAttemptId = await getInProgressQuizAttemptId(session.user.id, quizId);
+    if (existingAttemptId) {
+      return NextResponse.json({ success: true, attemptId: existingAttemptId });
+    }
+
     const maxAttempts = result.course.max_quiz_attempts ?? result.course.maxQuizAttempts;
-    let attemptsUsed = 0;
     if (typeof maxAttempts === "number" && maxAttempts > 0) {
-      attemptsUsed = await countQuizAttemptsByUserAndCourse(session.user.id, courseId);
+      const attemptsUsed = await countQuizAttemptsByUserAndCourse(session.user.id, courseId);
       if (attemptsUsed >= maxAttempts) {
         return NextResponse.json({ error: "تم استنفاد المحاولات" }, { status: 403 });
       }

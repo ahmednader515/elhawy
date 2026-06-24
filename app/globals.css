@@ -15,7 +15,9 @@ html.light {
   --color-border: #e2e8f0;
   --color-primary: var(--platform-primary, #0ea5e9);
   --color-primary-hover: color-mix(in srgb, var(--color-primary) 85%, #000);
-  --color-primary-light: #e0f2fe;
+  --color-primary-light: color-mix(in srgb, var(--color-primary) 14%, #ffffff);
+  --color-primary-emphasis: color-mix(in srgb, var(--color-primary) 78%, #1e293b);
+  --color-primary-on-soft: color-mix(in srgb, var(--color-primary) 72%, #1e293b);
   --color-accent: #f59e0b;
   --color-muted: #64748b;
   --color-success: #059669;
@@ -33,7 +35,9 @@ html.dark {
   --color-border: #1a1a1a;
   --color-primary: var(--platform-primary, #2dd4bf);
   --color-primary-hover: color-mix(in srgb, var(--color-primary) 82%, #fff);
-  --color-primary-light: #134e4a;
+  --color-primary-light: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
+  --color-primary-emphasis: color-mix(in srgb, var(--color-primary) 62%, #faf5ff);
+  --color-primary-on-soft: color-mix(in srgb, var(--color-primary) 50%, #ffffff);
   --color-accent: #f59e0b;
   --color-muted: #a8a29e;
   --color-success: #059669;
@@ -51,7 +55,9 @@ html:not(.light):not(.dark) {
   --color-border: #1a1a1a;
   --color-primary: var(--platform-primary, #2dd4bf);
   --color-primary-hover: color-mix(in srgb, var(--color-primary) 82%, #fff);
-  --color-primary-light: #134e4a;
+  --color-primary-light: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
+  --color-primary-emphasis: color-mix(in srgb, var(--color-primary) 62%, #faf5ff);
+  --color-primary-on-soft: color-mix(in srgb, var(--color-primary) 50%, #ffffff);
   --color-accent: #f59e0b;
   --color-muted: #a8a29e;
   --color-success: #059669;

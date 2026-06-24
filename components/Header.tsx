@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import type { UserRole } from "@/lib/types";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { useT, useLocalizedEnumValue } from "@/components/LocaleProvider";
+import { StudentNavbarPoints } from "@/components/StudentNavbarPoints";
 
 function UserMenu() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const t = useT();
@@ -21,7 +21,7 @@ function UserMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (status !== "authenticated" || !session?.user) return null;
+  if (!session?.user) return null;
 
   const roleLabel: Record<UserRole, string> = {
     ADMIN: useLocalizedEnumValue("ADMIN", "header.role", "Admin"),
@@ -84,11 +84,14 @@ export function Header({
   platformName,
   headerLogoUrl,
   platformSubscriptionExpiryLabel,
+  initialStudentXp,
 }: {
   platformName?: string | null;
   headerLogoUrl?: string | null;
   /** للطالب ذي اشتراك منصة نشط: نص تاريخ انتهاء الاشتراك (مُنسَّق من السيرفر) */
   platformSubscriptionExpiryLabel?: string | null;
+  /** نقاط الطالب (من السيرفر) */
+  initialStudentXp?: number | null;
 }) {
   const { data: session, status } = useSession();
   const t = useT();
@@ -115,9 +118,6 @@ export function Header({
             ) : null}
             {displayName ? <span className="min-w-0 truncate">{displayName}</span> : null}
           </Link>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <LanguageToggle />
-          </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 pb-2 sm:hidden">
@@ -135,10 +135,13 @@ export function Header({
               {t("common.courses", "Courses")}
             </Link>
           </div>
-          {status === "loading" ? (
+          {status === "loading" && !session ? (
             <span className="text-sm text-[var(--color-muted)]">...</span>
-          ) : session ? (
-            <UserMenu />
+          ) : session?.user ? (
+            <span className="flex shrink-0 items-center gap-2">
+              <StudentNavbarPoints initialXp={initialStudentXp} />
+              <UserMenu />
+            </span>
           ) : (
             <span className="flex shrink-0 items-center gap-1.5">
               <Link
@@ -174,7 +177,6 @@ export function Header({
           {displayName ? <span className="min-w-0 truncate">{displayName}</span> : null}
         </Link>
         <nav className="flex flex-shrink-0 items-center gap-2 sm:gap-7">
-          <LanguageToggle />
           <Link
             href="/"
             className="hidden text-base font-medium text-[var(--color-muted)] transition hover:text-[var(--color-foreground)] sm:inline-block"
@@ -187,10 +189,13 @@ export function Header({
           >
             {t("common.courses", "Courses")}
           </Link>
-          {status === "loading" ? (
+          {status === "loading" && !session ? (
             <span className="text-sm text-[var(--color-muted)]">...</span>
-          ) : session ? (
-            <UserMenu />
+          ) : session?.user ? (
+            <span className="flex shrink-0 items-center gap-2">
+              <StudentNavbarPoints initialXp={initialStudentXp} />
+              <UserMenu />
+            </span>
           ) : (
             <span className="flex items-center gap-2">
               <Link

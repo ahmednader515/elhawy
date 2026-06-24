@@ -9,8 +9,12 @@ import {
   hasFullCourseAccessAsStudent,
   ensureUserCopyrightCode,
   getHomepageSettings,
+  hasLessonCompletion,
 } from "@/lib/db";
-import { PlyrVideoPlayer } from "@/components/plyr-video-player";
+import { getCourseProgress } from "@/lib/gamification";
+import { LessonVideoWithProgress } from "@/components/LessonVideoWithProgress";
+import { LessonCompleteButton } from "@/components/LessonProgressClient";
+import "@/components/dashboard-wizard.css";
 import { VideoCopyrightOverlay } from "@/components/video-copyright-overlay";
 import { getYouTubeVideoId } from "@/lib/youtube";
 import { CourseOutlineSidebar } from "@/components/CourseOutlineSidebar";
@@ -130,6 +134,16 @@ export default async function LessonPage({ params }: Props) {
   const copyrightOverlayStyle =
     homepageSettings.copyrightOverlayStyle === "watermark" ? "watermark" : "floating";
 
+  let lessonCompleted = false;
+  let completedLessonIds: string[] = [];
+  let passedQuizIds: string[] = [];
+  if (isStudent && session?.user?.id) {
+    lessonCompleted = await hasLessonCompletion(session.user.id, String(lessonObj.id));
+    const progress = await getCourseProgress(session.user.id, course.id);
+    completedLessonIds = progress.completedLessonIds;
+    passedQuizIds = progress.passedQuizIds;
+  }
+
   const lessonsAll = (course.lessons ?? []) as Array<Record<string, unknown> & { id: string; title?: string; titleAr?: string | null }>;
   const lessons =
     !isStaff && !isEnrolled && !hasFullStudentAccess && allowedLessonIds.length > 0
@@ -161,11 +175,14 @@ export default async function LessonPage({ params }: Props) {
 
           {youtubeVideoId && (
             <div className="lesson-video-shell mt-6 relative w-full min-w-0 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-black">
-              <PlyrVideoPlayer
+              <LessonVideoWithProgress
                 key={`${lessonObj.id}-${youtubeVideoId}`}
+                lessonId={String(lessonObj.id)}
                 youtubeVideoId={youtubeVideoId}
                 storageKey={String(lessonObj.id)}
                 className="w-full"
+                isStudent={isStudent}
+                initialCompleted={lessonCompleted}
               />
               {studentCopyrightCode?.trim() ? (
                 <VideoCopyrightOverlay
@@ -205,6 +222,14 @@ export default async function LessonPage({ params }: Props) {
 
           {isStudent ? <LessonRatingSection lessonId={String(lessonObj.id)} /> : null}
 
+          {!youtubeVideoId && isStudent ? (
+            <LessonCompleteButton
+              lessonId={String(lessonObj.id)}
+              isStudent={isStudent}
+              initialCompleted={lessonCompleted}
+            />
+          ) : null}
+
           {/* أزرار السابق والتالي أسفل الحصة */}
           <nav className="mt-8 flex w-full items-center justify-between gap-4 border-t border-[var(--color-border)] pt-6">
             {prevItem ? (
@@ -240,6 +265,8 @@ export default async function LessonPage({ params }: Props) {
             quizzes={quizzes}
             currentLessonId={lessonObj.id as string}
             currentQuizId={null}
+            completedLessonIds={completedLessonIds}
+            passedQuizIds={passedQuizIds}
           />
         </aside>
       </div>

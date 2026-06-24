@@ -23,9 +23,19 @@ type Props = {
   quizzes: Array<Record<string, unknown> & { id: string; title?: string; order?: number; _count?: { questions?: number } }>;
   currentLessonId?: string | null;
   currentQuizId?: string | null;
+  completedLessonIds?: string[];
+  passedQuizIds?: string[];
 };
 
-export async function CourseOutlineSidebar({ course, lessons, quizzes, currentLessonId, currentQuizId }: Props) {
+export async function CourseOutlineSidebar({
+  course,
+  lessons,
+  quizzes,
+  currentLessonId,
+  currentQuizId,
+  completedLessonIds = [],
+  passedQuizIds = [],
+}: Props) {
   const t = await getServerTranslator();
   const lessonOrder = (l: { order?: number }) => (typeof l.order === "number" ? l.order : 999);
   const quizOrder = (q: { order?: number }) => (typeof q.order === "number" ? q.order : 999);
@@ -42,6 +52,7 @@ export async function CourseOutlineSidebar({ course, lessons, quizzes, currentLe
           if (item.type === "lesson") {
             const l = item.data;
             const isCurrent = l.id === currentLessonId;
+            const isDone = completedLessonIds.includes(l.id);
             const title = String((l as Record<string, unknown>).titleAr ?? (l as Record<string, unknown>).title ?? "");
             return (
               <li key={`l-${l.id}`}>
@@ -54,6 +65,7 @@ export async function CourseOutlineSidebar({ course, lessons, quizzes, currentLe
                   }`}
                 >
                   <span className="ml-1.5 text-[var(--color-muted)]">{i + 1}</span>
+                  {isDone ? <span className="ml-1 text-amber-500/90" aria-hidden>✦</span> : null}
                   <span>{title}</span>
                 </Link>
               </li>
@@ -61,6 +73,7 @@ export async function CourseOutlineSidebar({ course, lessons, quizzes, currentLe
           }
           const q = item.data;
           const isCurrent = q.id === currentQuizId;
+          const isPassed = passedQuizIds.includes(q.id);
           const title = String((q as Record<string, unknown>).title ?? "");
           const qCount = (q as { _count?: { questions?: number } })._count;
           const count = qCount != null && typeof qCount === "object" && "questions" in qCount ? Number(qCount.questions) || 0 : 0;
@@ -76,6 +89,7 @@ export async function CourseOutlineSidebar({ course, lessons, quizzes, currentLe
               >
                 <span className="ml-1.5 text-[var(--color-muted)]">{i + 1}</span>
                 <span className="ml-1 text-[var(--color-muted)]">{t("courses.testPrefix", "Quiz:")}</span>
+                {isPassed ? <span className="ml-1 text-amber-500/90" aria-hidden>✦</span> : null}
                 <span>{title}</span>
                 {count > 0 && <span className="mr-0.5 text-[10px] text-[var(--color-muted)]">({count})</span>}
               </Link>

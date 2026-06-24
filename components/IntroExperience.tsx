@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { El_Messiri } from "next/font/google";
 import { IntroGate } from "@/components/IntroGate";
@@ -30,6 +31,7 @@ type Phase = "loading" | "ready" | "terms" | "sceneLoading" | "intro" | "bats" |
 
 export function IntroExperience() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [skipIntro, setSkipIntro] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -37,12 +39,16 @@ export function IntroExperience() {
   const [covered, setCovered] = useState(false);
 
   useLayoutEffect(() => {
+    if (session?.user) {
+      router.replace("/");
+      return;
+    }
     if (hasIntroBeenCompleted()) {
       setSkipIntro(true);
       markIntroCompleted();
       router.replace("/");
     }
-  }, [router]);
+  }, [router, session]);
 
   useEffect(() => {
     setMounted(true);
@@ -278,7 +284,7 @@ function IntroTermsGate({ onAccept }: { onAccept: () => void }) {
             <span className="intro-sign-divider-line" />
           </div>
 
-          <p className={`intro-terms-body ${elMessiri.className}`}>
+          <p className={`intro-sign-subtitle intro-terms-body ${elMessiri.className}`}>
             أتعهد باحترام كل الشروط والضوابط الخاصة بالمنصة في الحفاظ على المحتوى
             العلمي للناشر وعدم نشر أي محتوى تعليمي بدون إذن مسبق.
           </p>

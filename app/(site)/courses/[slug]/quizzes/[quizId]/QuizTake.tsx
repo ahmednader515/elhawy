@@ -1,17 +1,34 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { QuizApiPayload } from "./QuizPageClient";
+import type { GamificationResult } from "@/lib/gamification-shared";
 import { useT } from "@/components/LocaleProvider";
+import { buildGamificationToast } from "@/components/LessonProgressClient";
+import { WizardToast } from "@/components/WizardToast";
+import { QUIZ_PASS_THRESHOLD, QUIZ_HIGH_SCORE_THRESHOLD } from "@/lib/gamification-shared";
+import { notifyGamificationXpUpdated } from "@/lib/gamification-navbar";
 
-export function QuizTake({ quiz }: { quiz: QuizApiPayload }) {
+export function QuizTake({
+  quiz,
+  initialAttemptId = null,
+  onSubmitted,
+}: {
+  quiz: QuizApiPayload;
+  initialAttemptId?: string | null;
+  onSubmitted?: () => void;
+}) {
+  const router = useRouter();
   const t = useT();
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [started, setStarted] = useState(false);
-  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [started, setStarted] = useState(Boolean(initialAttemptId));
+  const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [starting, setStarting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [gamification, setGamification] = useState<GamificationResult | null>(null);
+  const [toast, setToast] = useState<{ message: string; subMessage?: string } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const timeLimitMinutes = quiz.timeLimitMinutes ?? null;
   const totalSeconds =
@@ -27,6 +44,13 @@ export function QuizTake({ quiz }: { quiz: QuizApiPayload }) {
   const canAttempt = quiz.canAttempt !== false;
   const attemptsUsed = typeof quiz.attemptsUsed === "number" ? quiz.attemptsUsed : null;
   const maxQuizAttempts = typeof quiz.maxQuizAttempts === "number" ? quiz.maxQuizAttempts : null;
+
+  useEffect(() => {
+    if (initialAttemptId) {
+      setAttemptId(initialAttemptId);
+      setStarted(true);
+    }
+  }, [initialAttemptId]);
 
   function setAnswer(questionId: string, value: string) {
     setAnswers((a) => ({ ...a, [questionId]: value }));
@@ -66,13 +90,22 @@ export function QuizTake({ quiz }: { quiz: QuizApiPayload }) {
 
   const submitAnswers = useCallback(
     async (reason?: "timeup") => {
-      const s = reason === "timeup" ? calculateScoreFromAnswers(answersRef.current) : calculateScore();
+      const answerPayload = reason === "timeup" ? answersRef.current : answers;
+      const rawScore =
+        reason === "timeup" ? calculateScoreFromAnswers(answersRef.current) : calculateScore();
+      const totalToSend = totalScored > 0 ? totalScored : quiz.questions.length;
+      const scoreToSend = totalScored > 0 ? rawScore : quiz.questions.length;
       setSubmitting(true);
       try {
         const res = await fetch(`/api/quizzes/${encodeURIComponent(quiz.id)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ score: s, totalQuestions: totalScored, attemptId }),
+          body: JSON.stringify({
+            score: scoreToSend,
+            totalQuestions: totalToSend,
+            attemptId,
+            answers: answerPayload,
+          }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -81,10 +114,21 @@ export function QuizTake({ quiz }: { quiz: QuizApiPayload }) {
           setSubmitting(false);
           return;
         }
+        const data = await res.json().catch(() => ({}));
         setSubmitted(true);
         if (reason === "timeup") {
           setToastMessage(t("quiz.examTimeEnded", "Time is up"));
         }
+        const g = data.gamification as GamificationResult | undefined;
+        if (g) {
+          setGamification(g);
+          if (typeof g.totalXp === "number") notifyGamificationXpUpdated(g.totalXp);
+          if (g.pointsAwarded > 0 || g.levelUp || g.courseComplete) {
+            setToast(buildGamificationToast(g, t));
+          }
+        }
+        router.refresh();
+        onSubmitted?.();
       } catch {
         alert(t("quiz.serverConnectionFailed", "Failed to connect to server"));
         if (reason === "timeup") timeUpSubmitStartedRef.current = false;
@@ -92,7 +136,7 @@ export function QuizTake({ quiz }: { quiz: QuizApiPayload }) {
         setSubmitting(false);
       }
     },
-    [attemptId, quiz.id, t, totalScored]
+    [answers, attemptId, onSubmitted, quiz.id, quiz.questions.length, router, t, totalScored]
   );
 
   async function handleStart() {
@@ -277,16 +321,70 @@ export function QuizTake({ quiz }: { quiz: QuizApiPayload }) {
         >
           {submitting ? t("quiz.submitting", "Submitting...") : t("quiz.finishAndShowResult", "Finish and show result")}
         </button>
-      ) : (
-        <div className="rounded-[var(--radius-card)] border border-[var(--color-primary)] bg-[var(--color-primary-light)]/30 p-6">
-          <p className="text-lg font-semibold text-[var(--color-foreground)]">
-            {t("quiz.resultPrefix", "Your score in MCQ/True-False questions:")} {score} {t("quiz.from", "out of")} {totalScored}
+      ) : submitted ? (
+        <div className="dashboard-wizard rounded-[var(--radius-card)] border border-[var(--color-primary)] bg-[var(--color-primary-light)]/30 p-6">
+          {totalScored > 0 && score / totalScored >= 1 ? (
+            <p className="text-lg font-semibold text-[var(--color-foreground)]">
+              ✦ {t("wizard.quizPerfect", "Perfect score! You mastered the spell")}
+            </p>
+          ) : totalScored > 0 && score / totalScored >= QUIZ_HIGH_SCORE_THRESHOLD ? (
+            <p className="text-lg font-semibold text-[var(--color-foreground)]">
+              ✦ {t("wizard.quizHighScore", "Excellent! Your spell is powerful")}
+            </p>
+          ) : totalScored > 0 && score / totalScored >= QUIZ_PASS_THRESHOLD ? (
+            <p className="text-lg font-semibold text-[var(--color-foreground)]">
+              ✦ {t("wizard.quizPass", "You passed the magic trial")}
+            </p>
+          ) : (
+            <p className="text-lg font-semibold text-[var(--color-foreground)]">
+              {t("quiz.resultPrefix", "Your score in MCQ/True-False questions:")} {score}{" "}
+              {t("quiz.from", "out of")} {totalScored}
+            </p>
+          )}
+          <p className="mt-2 text-sm text-[var(--color-muted)]">
+            {t("quiz.resultPrefix", "Your score in MCQ/True-False questions:")} {score}{" "}
+            {t("quiz.from", "out of")} {totalScored}
           </p>
+          {gamification && gamification.pointsAwarded > 0 ? (
+            <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">
+              +{gamification.pointsAwarded} {t("wizard.points", "Magic points")}
+            </p>
+          ) : null}
+          {gamification?.levelUp ? (
+            <p className="mt-1 text-sm font-medium text-amber-500/90">
+              {t("wizard.levelUp", "You reached level {level}: {title}")
+                .replace("{level}", String(gamification.level))
+                .replace("{title}", t(
+                  gamification.level >= 20
+                    ? "wizard.levelTitle20"
+                    : gamification.level >= 15
+                      ? "wizard.levelTitle15"
+                      : gamification.level >= 10
+                        ? "wizard.levelTitle10"
+                        : gamification.level >= 5
+                          ? "wizard.levelTitle5"
+                          : "wizard.levelTitle1",
+                  "",
+                ))}
+            </p>
+          ) : null}
+          {gamification?.courseComplete ? (
+            <p className="mt-1 text-sm font-medium text-[var(--color-primary)]">
+              ✦ {t("wizard.courseComplete", "You completed the knowledge journey")}
+            </p>
+          ) : null}
           <p className="mt-2 text-sm text-[var(--color-muted)]">
             {t("quiz.essayNotAutoCorrected", "Essay questions are not auto-graded; the teacher can review them later.")}
           </p>
         </div>
-      )}
+      ) : null}
+      {toast ? (
+        <WizardToast
+          message={toast.message}
+          subMessage={toast.subMessage}
+          onDismiss={() => setToast(null)}
+        />
+      ) : null}
     </div>
   );
 }

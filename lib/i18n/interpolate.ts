@@ -7,3 +7,5 @@ export function fillMessage(
     Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : `{${key}}`,
   );
 }
+
+export const interpolate = fillMessage;

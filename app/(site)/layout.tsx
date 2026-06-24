@@ -7,6 +7,7 @@ import {
   userHasActivePlatformSubscription,
   getLatestPlatformSubscriptionExpiry,
 } from "@/lib/db";
+import { getStudentGamificationProfile } from "@/lib/gamification";
 import { normalizeHeroHex } from "@/lib/hero-bg";
 import { makeTranslator } from "@/lib/i18n/core";
 import { getLocaleFromCookie } from "@/lib/i18n/server";
@@ -68,9 +69,17 @@ export default async function SiteLayout({
   }
 
   let platformSubscriptionExpiryLabel: string | null = null;
+  let initialStudentXp: number | null = null;
   try {
     const session = await getServerSession(authOptions);
     if (session?.user?.role === "STUDENT" && session.user.id) {
+      try {
+        const profile = await getStudentGamificationProfile(session.user.id, locale);
+        initialStudentXp = profile.xp;
+      } catch {
+        initialStudentXp = null;
+      }
+
       const active = await userHasActivePlatformSubscription(session.user.id);
       if (active) {
         const exp = await getLatestPlatformSubscriptionExpiry(session.user.id);
@@ -98,6 +107,7 @@ export default async function SiteLayout({
         platformName={platformName}
         headerLogoUrl={headerLogoUrl}
         platformSubscriptionExpiryLabel={platformSubscriptionExpiryLabel}
+        initialStudentXp={initialStudentXp}
       />
       <main className="flex-1">{children}</main>
       <Footer footerTitle={footerTitle} footerTagline={footerTagline} footerCopyright={footerCopyright} />

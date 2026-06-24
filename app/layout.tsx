@@ -30,14 +30,8 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocaleFromCookie();
-  const defaultTitle =
-    locale === "ar"
-      ? "منصتي التعليمية | دورات وتعلم أونلاين"
-      : "My Learning Platform | Courses and Online Learning";
-  const defaultDescription =
-    locale === "ar"
-      ? "منصة تعليمية حديثة لدورات البرمجة والتصميم والتطوير"
-      : "A modern learning platform for programming, design, and development courses";
+  const defaultTitle = "منصتي التعليمية | دورات وتعلم أونلاين";
+  const defaultDescription = "منصة تعليمية حديثة لدورات البرمجة والتصميم والتطوير";
   try {
     const settings = await getHomepageSettings();
     const title = pickLocalizedText(locale, settings.pageTitle, settings.pageTitleEn) || defaultTitle;

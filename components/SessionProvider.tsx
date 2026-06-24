@@ -7,9 +7,11 @@ import { ReactNode, useEffect, useState } from "react";
 const SESSION_REFETCH_INTERVAL = 5;
 
 function SessionRefetchWhenVisible() {
-  const { update } = useSession();
+  const { data: session, update } = useSession();
 
   useEffect(() => {
+    if (!session?.user) return;
+
     const tick = () => {
       if (document.visibilityState === "visible") {
         void update();
@@ -18,7 +20,7 @@ function SessionRefetchWhenVisible() {
 
     const id = window.setInterval(tick, SESSION_REFETCH_INTERVAL * 1000);
     return () => window.clearInterval(id);
-  }, [update]);
+  }, [session?.user, update]);
 
   return null;
 }
@@ -31,7 +33,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <NextAuthSessionProvider refetchOnWindowFocus>
+    <NextAuthSessionProvider refetchOnWindowFocus={false}>
       {mounted ? <SessionRefetchWhenVisible /> : null}
       {children}
     </NextAuthSessionProvider>

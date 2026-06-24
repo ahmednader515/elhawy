@@ -15,6 +15,9 @@ import {
   userHasActivePlatformSubscriptionForPaidCourse,
   getLatestPlatformSubscriptionExpiry,
 } from "@/lib/db";
+import { getCourseProgress, getLeaderboard } from "@/lib/gamification";
+import { CourseLeaderboardSection } from "@/components/dashboard/CourseLeaderboardSection";
+import "@/components/dashboard-wizard.css";
 import { EnrollButton } from "./EnrollButton";
 import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
@@ -154,11 +157,34 @@ export default async function CoursePage({ params }: Props) {
 
   const isGuest = !session;
 
+  let courseGamification: {
+    progress: Awaited<ReturnType<typeof getCourseProgress>>;
+    leaderboard: Awaited<ReturnType<typeof getLeaderboard>>;
+  } | null = null;
+
+  if (
+    session?.user?.id &&
+    session.user.role === "STUDENT" &&
+    (isEnrolled || hasFullStudentAccess)
+  ) {
+    const [progress, leaderboard] = await Promise.all([
+      getCourseProgress(session.user.id, course.id),
+      getLeaderboard({
+        scope: "course",
+        courseId: course.id,
+        limit: 5,
+        userId: session.user.id,
+        locale,
+      }),
+    ]);
+    courseGamification = { progress, leaderboard };
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <Link
         href="/courses"
-        className="text-sm font-medium text-[var(--color-primary)] hover:underline"
+        className="text-sm font-medium text-[var(--color-primary-emphasis)] hover:underline"
       >
         ← {t("common.backToCourses", "Back to courses")}
       </Link>
@@ -242,7 +268,7 @@ export default async function CoursePage({ params }: Props) {
           </div>
           <div className="p-6 sm:p-8">
             {categoryName && (
-              <span className="text-sm font-medium text-[var(--color-primary)]">
+              <span className="text-sm font-semibold tracking-wide text-[var(--color-primary-emphasis)]">
                 {categoryName}
               </span>
             )}
@@ -251,12 +277,12 @@ export default async function CoursePage({ params }: Props) {
             </h1>
             <div className="mt-4 flex flex-wrap gap-2">
               {coursePrice > 0 && (
-                <span className="rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-sm font-semibold text-[var(--color-primary)]">
+                <span className="rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary-light)] px-3 py-1 text-sm font-semibold text-[var(--color-primary-on-soft)]">
                   {coursePrice.toFixed(2)} {t("common.egyptianPoundShort", "EGP")}
                 </span>
               )}
               {(course as Record<string, unknown>).duration ? (
-                <span className="rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-sm text-[var(--color-primary)]">
+                <span className="rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary-light)] px-3 py-1 text-sm text-[var(--color-primary-on-soft)]">
                   ⏱ {(course as Record<string, unknown>).duration as string}
                 </span>
               ) : null}
@@ -313,10 +339,24 @@ export default async function CoursePage({ params }: Props) {
               />
             )}
             {isEnrolled && (
-              <p className="mt-4 rounded-[var(--radius-btn)] bg-[var(--color-primary-light)]/50 px-4 py-2 text-sm text-[var(--color-primary)]">
-                ✓ {t("courses.youAreEnrolled", "You are enrolled in this course.")} <Link href="/dashboard" className="font-medium underline">{t("dashboard.title", "Dashboard")}</Link>
+              <p className="mt-4 rounded-[var(--radius-btn)] border border-[var(--color-primary)]/35 bg-[var(--color-primary-light)] px-4 py-2.5 text-sm text-[var(--color-foreground)]">
+                ✓ {t("courses.youAreEnrolled", "You are enrolled in this course.")}{" "}
+                <Link href="/dashboard" className="font-semibold text-[var(--color-primary-emphasis)] underline decoration-[var(--color-primary-emphasis)]/40 underline-offset-2 hover:decoration-[var(--color-primary-emphasis)]">
+                  {t("dashboard.title", "Dashboard")}
+                </Link>
               </p>
             )}
+
+            {courseGamification && session?.user?.id ? (
+              <div className="mt-6">
+                <CourseLeaderboardSection
+                  progress={courseGamification.progress}
+                  leaderboard={courseGamification.leaderboard.entries}
+                  courseRank={courseGamification.leaderboard.callerRank}
+                  currentUserId={session.user.id}
+                />
+              </div>
+            ) : null}
 
             {paidCourseCoveredBySubscription && subscriptionExpiresAt && (
               <p className="mt-4 rounded-[var(--radius-btn)] border border-teal-500/40 bg-teal-500/10 px-4 py-2 text-sm text-teal-900 dark:text-teal-100">
@@ -344,7 +384,7 @@ export default async function CoursePage({ params }: Props) {
                     const lessonClassName = `flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] p-3 ${canAccessContent ? "transition hover:border-[var(--color-primary)]/30" : ""}`;
                     const content = (
                       <>
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/20 text-sm font-medium text-[var(--color-primary)]">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary-light)] text-sm font-semibold text-[var(--color-primary-on-soft)]">
                           {i + 1}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -357,7 +397,7 @@ export default async function CoursePage({ params }: Props) {
                             </span>
                           ) : null}
                           {(lesson as Record<string, unknown>).videoUrl && canAccessContent ? (
-                            <span className="mr-2 text-xs text-[var(--color-primary)]">▶ {t("courses.videoTag", "Video")}</span>
+                            <span className="mr-2 text-xs font-medium text-[var(--color-primary-emphasis)]">▶ {t("courses.videoTag", "Video")}</span>
                           ) : null}
                         </div>
                       </>
@@ -393,23 +433,36 @@ export default async function CoursePage({ params }: Props) {
                   {t("courses.quizzes", "Quizzes")} ({course.quizzes.length})
                 </h2>
                 <ul className="mt-4 space-y-2">
-                  {course.quizzes.map((quiz, i) => {
+                  {course.quizzes.map((quiz) => {
                     const q = quiz as Record<string, unknown> & { _count?: { questions?: number } };
                     const questionsCount = q._count?.questions ?? 0;
+                    const isQuizPassed = courseGamification?.progress.passedQuizIds.includes(String(q.id)) ?? false;
+                    const quizClassName = `flex items-center justify-between gap-3 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] p-4 ${canAccessQuizzes ? "transition hover:border-[var(--color-primary)]/30" : "opacity-75"}`;
+                    const quizContent = (
+                      <>
+                        <span className="flex items-center gap-2 font-medium text-[var(--color-foreground)]">
+                          {isQuizPassed ? (
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary-light)] text-sm text-amber-500/90" aria-hidden>
+                              ✦
+                            </span>
+                          ) : null}
+                          {String(q.title ?? "")}
+                        </span>
+                        <span className="text-sm text-[var(--color-muted)]">{questionsCount} {t("courses.questions", "questions")}</span>
+                      </>
+                    );
                     return (
                     <li key={String(q.id)}>
                       {canAccessQuizzes ? (
                         <Link
                           href={`/courses/${encodeURIComponent(normalizeSlugForUrl(String((course as Record<string, unknown>).slug ?? "")) || String((course as Record<string, unknown>).id ?? course.id))}/quizzes/${String(q.id)}`}
-                          className="flex items-center justify-between rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] p-4 transition hover:border-[var(--color-primary)]/30"
+                          className={quizClassName}
                         >
-                          <span className="font-medium text-[var(--color-foreground)]">{String(q.title ?? "")}</span>
-                          <span className="text-sm text-[var(--color-muted)]">{questionsCount} {t("courses.questions", "questions")}</span>
+                          {quizContent}
                         </Link>
                       ) : (
-                        <div className="flex items-center justify-between rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] p-4 opacity-75">
-                          <span className="font-medium text-[var(--color-foreground)]">{String(q.title ?? "")}</span>
-                          <span className="text-sm text-[var(--color-muted)]">{questionsCount} {t("courses.questions", "questions")}</span>
+                        <div className={quizClassName}>
+                          {quizContent}
                         </div>
                       )}
                     </li>

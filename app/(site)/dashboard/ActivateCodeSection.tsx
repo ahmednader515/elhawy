@@ -46,10 +46,7 @@ export function ActivateCodeSection() {
         type: "success",
         text:
           data.message ??
-          t(
-            "dashboard.page.activateCode.successDefault",
-            "Code activated and you were enrolled in the course successfully",
-          ),
+          t("wizard.codeActivated", "The gate of knowledge is open"),
       });
       setCode("");
       router.refresh();

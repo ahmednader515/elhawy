@@ -63,6 +63,9 @@ export function DashboardNav({
   if (!isStaff) {
     return (
       <>
+        <NavLink href="/dashboard/leaderboard">
+          {t("dashboardNav.leaderboard", "Hall of Fame")}
+        </NavLink>
         <NavLink href="/dashboard/messages">
           {t("dashboardNav.inbox", "Inbox")}
         </NavLink>
@@ -125,6 +128,12 @@ export function DashboardNav({
           <NavLink href="/dashboard/subscriptions">{t("dashboardNav.platformSubscriptions", "Platform subscriptions")}</NavLink>
           <NavLink href="/dashboard/subscription-students">{t("dashboardNav.subscribedStudents", "Subscribed students")}</NavLink>
           <NavLink href="/dashboard/store">{t("dashboardNav.platformStore", "Platform store")}</NavLink>
+          <NavLink href="/dashboard/gamification/leaderboard">
+            {t("dashboardNav.adminLeaderboard", "Student leaderboard")}
+          </NavLink>
+          <NavLink href="/dashboard/gamification/points">
+            {t("dashboardNav.pointsSettings", "Points control")}
+          </NavLink>
         </>
       )}
       {(isAdmin || isAssistant) && (

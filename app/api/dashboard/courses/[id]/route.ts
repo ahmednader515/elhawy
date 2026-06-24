@@ -75,11 +75,9 @@ export async function PUT(
   const slug = (course as { slug?: string }).slug ?? "";
 
   const titleAr = (body.titleAr ?? body.title)?.trim();
-  const titleEn = (body.titleEn ?? body.title)?.trim();
   const descriptionAr = (body.descriptionAr ?? body.description)?.trim();
-  const descriptionEn = (body.descriptionEn ?? "").trim();
-  if (!titleAr || !titleEn || !descriptionAr || !descriptionEn) {
-    return NextResponse.json({ error: "العنوان والوصف بالعربية والإنجليزية مطلوبان" }, { status: 400 });
+  if (!titleAr || !descriptionAr) {
+    return NextResponse.json({ error: "العنوان والوصف بالعربية مطلوبان" }, { status: 400 });
   }
 
   const role = session.user.role;
@@ -90,18 +88,15 @@ export async function PUT(
 
   let categoryId: string | null | undefined = body.categoryId;
   const catNameAr = (body.categoryNameAr ?? body.categoryName)?.trim();
-  const catNameEn = (body.categoryNameEn ?? body.categoryName)?.trim();
-  if (catNameAr || catNameEn) {
-    let cat =
-      (catNameAr ? await findCategoryByNameForDashboard(catNameAr, session.user.id, role) : null) ??
-      (catNameEn ? await findCategoryByNameForDashboard(catNameEn, session.user.id, role) : null);
+  if (catNameAr) {
+    let cat = await findCategoryByNameForDashboard(catNameAr, session.user.id, role);
     if (!cat) {
-      const slugBase = catNameEn || catNameAr || "cat";
+      const slugBase = catNameAr || "cat";
       const slugCat = slugBase.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\u0600-\u06FF-]+/g, "") || "cat";
       const uniqueSlug = slugCat + "-" + Date.now();
       cat = await createCategory({
-        name: catNameEn || catNameAr || slugBase,
-        name_ar: catNameAr || catNameEn || slugBase,
+        name: catNameAr,
+        name_ar: catNameAr,
         slug: uniqueSlug,
         created_by_id: session.user.id,
       });
@@ -123,12 +118,12 @@ export async function PUT(
   }
 
   await updateCourse(id, {
-    title: titleEn,
+    title: titleAr,
     title_ar: titleAr,
     description: descriptionAr,
-    description_en: descriptionEn,
+    description_en: null,
     short_desc: (body.shortDescAr ?? body.shortDesc)?.trim() || null,
-    short_desc_en: (body.shortDescEn ?? "").trim() || null,
+    short_desc_en: null,
     image_url: body.imageUrl?.trim() || null,
     price: body.price ?? 0,
     is_published: body.isPublished ?? true,

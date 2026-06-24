@@ -58,12 +58,9 @@ export default async function EditCoursePage({ params }: Props) {
   }
   const initialData = {
     id: String(c.id ?? ""),
-    titleEn: String(c.title ?? ""),
-    titleAr: String(c.titleAr ?? c.title_ar ?? ""),
-    descriptionAr: String(c.description ?? ""),
-    descriptionEn: String(c.descriptionEn ?? c.description_en ?? ""),
+    titleAr: String(c.titleAr ?? c.title_ar ?? c.title ?? ""),
+    descriptionAr: String(c.description ?? c.description_ar ?? ""),
     shortDescAr: String(c.shortDesc ?? c.short_desc ?? ""),
-    shortDescEn: String(c.shortDescEn ?? c.short_desc_en ?? ""),
     imageUrl: String(c.imageUrl ?? c.image_url ?? ""),
     price: String(Number(c.price ?? 0)),
     isPublished: Boolean(c.isPublished ?? c.is_published ?? true),

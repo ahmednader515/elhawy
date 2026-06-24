@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { QuizTake } from "./QuizTake";
 import { useT } from "@/components/LocaleProvider";
@@ -25,18 +25,28 @@ export type QuizApiPayload = {
   attemptsUsed?: number;
   /** من API: الحد الأقصى للمحاولات داخل الكورس */
   maxQuizAttempts?: number | null;
+  /** محاولة جارية لم تُسلَّم بعد */
+  inProgressAttemptId?: string | null;
 };
 
-export function QuizPageClient({ quizId }: { quizId: string }) {
+export function QuizPageClient({
+  quizId,
+  passedQuizIds = [],
+}: {
+  quizId: string;
+  passedQuizIds?: string[];
+}) {
   const t = useT();
   const [quiz, setQuiz] = useState<QuizApiPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const invalidQuizId = !quizId;
+  const isQuizPassed = passedQuizIds.includes(quizId);
 
-  useEffect(() => {
-    if (invalidQuizId) return;
-    fetch(`/api/quizzes/${encodeURIComponent(quizId)}`)
+  const loadQuiz = useCallback(() => {
+    if (invalidQuizId) return Promise.resolve();
+    setLoading(true);
+    return fetch(`/api/quizzes/${encodeURIComponent(quizId)}`)
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -57,6 +67,10 @@ export function QuizPageClient({ quizId }: { quizId: string }) {
       })
       .finally(() => setLoading(false));
   }, [invalidQuizId, quizId, t]);
+
+  useEffect(() => {
+    void loadQuiz();
+  }, [loadQuiz]);
 
   if (invalidQuizId) {
     return (
@@ -120,7 +134,10 @@ export function QuizPageClient({ quizId }: { quizId: string }) {
       <Link href={courseHref} className="text-sm font-medium text-[var(--color-primary)] hover:underline">
         ← {t("courses.backToCourse", "Back to")} {courseTitle}
       </Link>
-      <h1 className="mt-4 text-2xl font-bold text-[var(--color-foreground)]">{quiz.title}</h1>
+      <h1 className="mt-4 text-2xl font-bold text-[var(--color-foreground)]">
+        {isQuizPassed ? <span className="ml-2 text-amber-500/90" aria-hidden>✦</span> : null}
+        {quiz.title}
+      </h1>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
         {quiz.questions.length} {t("courses.questions", "questions")}
         {(q.maxQuizAttempts != null && q.attemptsUsed != null) && (
@@ -130,7 +147,13 @@ export function QuizPageClient({ quizId }: { quizId: string }) {
           <span className="mr-2"> — {t("quiz.durationLabel", "Quiz duration:")} {quiz.timeLimitMinutes} {t("quiz.minutes", "minutes")}</span>
         )}
       </p>
-      <QuizTake quiz={quiz} />
+      <QuizTake
+        quiz={quiz}
+        initialAttemptId={quiz.inProgressAttemptId ?? null}
+        onSubmitted={() => {
+          void loadQuiz();
+        }}
+      />
     </div>
   );
 }

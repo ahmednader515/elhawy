@@ -20,6 +20,9 @@ export interface User {
   teacher_homepage_order?: number | null;
   /** كود حقوق الطبع والنشر — للطلاب فقط، فريد، يظهر على مشغّل الحصص */
   copyright_code?: string | null;
+  /** نقاط الخبرة السحرية (منفصلة عن الرصيد المالي) */
+  experience_points?: number;
+  wizard_level?: number;
   current_session_id?: string | null;
   created_at: Date;
   updated_at: Date;

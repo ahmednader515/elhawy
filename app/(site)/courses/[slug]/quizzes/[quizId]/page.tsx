@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCourseWithContent, getEnrollment, hasFullCourseAccessAsStudent } from "@/lib/db";
+import { getCourseProgress } from "@/lib/gamification";
 import { CourseOutlineSidebar } from "@/components/CourseOutlineSidebar";
 import { QuizPageClient } from "./QuizPageClient";
 
@@ -66,6 +67,16 @@ export default async function QuizPage({ params }: Props) {
   const quizExists = (course.quizzes ?? []).some((q) => q.id === quizId);
   if (!quizExists) notFound();
 
+
+  let completedLessonIds: string[] = [];
+  let passedQuizIds: string[] = [];
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  if (session?.user?.id && userRole === "STUDENT") {
+    const progress = await getCourseProgress(session.user.id, course.id);
+    completedLessonIds = progress.completedLessonIds;
+    passedQuizIds = progress.passedQuizIds;
+  }
+
   const lessons = (course.lessons ?? []) as Array<Record<string, unknown> & { id: string; slug?: string | null }>;
   const quizzes = (course.quizzes ?? []) as Array<Record<string, unknown> & { id: string }>;
   const items: CourseItem[] = [
@@ -80,7 +91,7 @@ export default async function QuizPage({ params }: Props) {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="grid gap-6 lg:grid-cols-[1fr_200px]">
         <article className="min-w-0 lg:col-start-1 lg:row-start-1">
-          <QuizPageClient quizId={quizId} />
+          <QuizPageClient quizId={quizId} passedQuizIds={passedQuizIds} />
 
           {/* أزرار السابق والتالي أسفل الاختبار */}
           <nav className="mx-auto mt-8 flex w-full max-w-3xl items-center justify-between gap-4 border-t border-[var(--color-border)] px-4 pt-6 sm:px-6">
@@ -105,13 +116,15 @@ export default async function QuizPage({ params }: Props) {
           </nav>
         </article>
 
-        <aside className="order-first lg:col-start-2 lg:row-start-1 lg:order-none">
+        <aside className="order-first lg:col-start-2 lg:row-start-1 lg:order-none" key={passedQuizIds.join(",")}>
           <CourseOutlineSidebar
             course={course}
             lessons={lessons as Array<Record<string, unknown> & { id: string; title?: string; titleAr?: string | null }>}
             quizzes={quizzes as Array<Record<string, unknown> & { id: string; title?: string; _count?: { questions?: number } }>}
             currentLessonId={null}
             currentQuizId={quizId}
+            completedLessonIds={completedLessonIds}
+            passedQuizIds={passedQuizIds}
           />
         </aside>
       </div>

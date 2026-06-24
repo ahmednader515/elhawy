@@ -938,11 +938,11 @@
   margin: 0;
   padding: 0 0.35rem;
   max-width: 28rem;
-  font-size: clamp(1rem, 2.8vw, 1.2rem);
+  font-size: clamp(0.95rem, 2.8vw, 1.15rem);
   font-weight: 600;
   line-height: 1.85;
   text-align: center;
-  color: rgba(245, 235, 255, 0.94);
+  color: #5c4030;
 }
 
 .intro-terms-cta .intro-gate-cta-label {

@@ -273,24 +273,13 @@ html.dark .home-themed,
   z-index: 40;
   overflow: hidden;
   pointer-events: none;
-  contain: strict;
 }
 
 .home-bat {
   position: absolute;
   left: 0;
+  will-change: transform;
   transform-origin: center center;
-  contain: layout style paint;
-  animation: home-bat-fly var(--duration, 3.5s) linear forwards;
-}
-
-@keyframes home-bat-fly {
-  from {
-    transform: translate3d(110vw, 0, 0) rotate(-90deg);
-  }
-  to {
-    transform: translate3d(-25vw, var(--drift, 0), 0) rotate(-90deg);
-  }
 }
 
 .home-bat-svg {
@@ -298,17 +287,6 @@ html.dark .home-themed,
   width: 100%;
   height: 100%;
   overflow: visible;
-}
-
-/* Scroll bats: static wings — wing flap per bat was too heavy at scale. */
-.home-bat-svg--static .bat-wing--l {
-  transform: rotate(4deg);
-  animation: none;
-}
-
-.home-bat-svg--static .bat-wing--r {
-  transform: rotate(-4deg);
-  animation: none;
 }
 
 /* Wing flap: each membrane rotates around the shoulder. */

@@ -17,12 +17,8 @@ function resolveMessage(messages: Messages, key: string): string | undefined {
   return typeof current === "string" ? current : undefined;
 }
 
-export function normalizeLocale(raw: string | null | undefined): Locale {
-  if (!raw) return DEFAULT_LOCALE;
-  const normalized = raw.trim().toLowerCase();
-  return (SUPPORTED_LOCALES as string[]).includes(normalized)
-    ? (normalized as Locale)
-    : DEFAULT_LOCALE;
+export function normalizeLocale(_raw: string | null | undefined): Locale {
+  return DEFAULT_LOCALE;
 }
 
 export function getDir(locale: Locale): "rtl" | "ltr" {

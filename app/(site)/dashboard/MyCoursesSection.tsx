@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CourseCard } from "@/components/CourseCard";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { getDir } from "@/lib/i18n/core";
+import { interpolate } from "@/lib/i18n/interpolate";
 import type { Course } from "@/lib/types";
 import type { Category } from "@/lib/types";
 
@@ -58,7 +59,13 @@ function toCourseCardCourse(c: CourseWithCategory): CourseCardCourse {
   };
 }
 
-export function MyCoursesSection({ courses }: { courses: CourseWithCategory[] }) {
+export function MyCoursesSection({
+  courses,
+  progressByCourseId = {},
+}: {
+  courses: CourseWithCategory[];
+  progressByCourseId?: Record<string, number>;
+}) {
   const t = useT();
   const locale = useLocale();
   const dir = getDir(locale);
@@ -123,7 +130,24 @@ export function MyCoursesSection({ courses }: { courses: CourseWithCategory[] })
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((course) => (
-            <CourseCard key={course.id} course={toCourseCardCourse(course)} />
+            <div key={course.id} className="space-y-2">
+              <CourseCard key={course.id} course={toCourseCardCourse(course)} />
+              {typeof progressByCourseId[course.id] === "number" ? (
+                <div className="dashboard-wizard px-1">
+                  <div className="wizard-xp-bar" aria-hidden>
+                    <span
+                      className="wizard-xp-bar-fill"
+                      style={{ width: `${progressByCourseId[course.id]}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    {interpolate(t("wizard.progressPercent", "{percent}% of the journey"), {
+                      percent: String(progressByCourseId[course.id]),
+                    })}
+                  </p>
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
       )}

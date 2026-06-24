@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
 
 type Submission = {
   id: string;
@@ -13,6 +14,7 @@ type Submission = {
 };
 
 export function LessonHomeworkSection({ lessonId }: { lessonId: string }) {
+  const t = useT();
   const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ export function LessonHomeworkSection({ lessonId }: { lessonId: string }) {
         setError(data.error ?? "فشل التسليم");
         return;
       }
-      setSuccess("تم تسليم الرابط بنجاح");
+      setSuccess(t("wizard.homeworkLinkSubmitted", "Your enchanted link was sent"));
       setLinkUrl("");
       router.refresh();
       setSubmissions((prev) => [
@@ -113,7 +115,7 @@ export function LessonHomeworkSection({ lessonId }: { lessonId: string }) {
         setError(data.error ?? "فشل التسليم");
         return;
       }
-      setSuccess("تم تسليم الملف بنجاح");
+      setSuccess(t("wizard.homeworkSubmitted", "Your magical manuscript was sent"));
       setFileUrl("");
       setFileName("");
       router.refresh();

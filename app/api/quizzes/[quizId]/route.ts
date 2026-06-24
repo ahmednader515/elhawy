@@ -8,8 +8,11 @@ import {
   countQuizAttemptsByUserAndCourse,
   createQuizAttempt,
   updateQuizAttemptById,
+  getInProgressQuizAttemptId,
+  insertQuizPassIfNotExists,
   hasFullCourseAccessAsStudent,
 } from "@/lib/db";
+import { computeQuizScore, normalizeQuizSubmitTotals } from "@/lib/quiz-scoring";
 
 /**
  * جلب اختبار بالمعرّف — مع التحقق من حد المحاولات إن وُجد.
@@ -54,6 +57,9 @@ export async function GET(
     }
 
     const maxAttempts = result.course.max_quiz_attempts ?? result.course.maxQuizAttempts;
+    const inProgressAttemptId = session?.user?.id
+      ? await getInProgressQuizAttemptId(session.user.id, quizId)
+      : null;
     let canAttempt = true;
     let attemptsUsed = 0;
     if (session?.user?.id && typeof maxAttempts === "number" && maxAttempts > 0) {
@@ -61,7 +67,7 @@ export async function GET(
       const fullCourse = await hasFullCourseAccessAsStudent(session.user.id, courseId);
       if (enrolled || fullCourse) {
         attemptsUsed = await countQuizAttemptsByUserAndCourse(session.user.id, courseId);
-        if (attemptsUsed >= maxAttempts) {
+        if (attemptsUsed >= maxAttempts && !inProgressAttemptId) {
           canAttempt = false;
         }
       }
@@ -96,12 +102,13 @@ export async function GET(
         options: (q.options ?? []).map((o: Record<string, unknown>) => ({
           id: o.id,
           text: o.text,
-          isCorrect: o.isCorrect ?? o.is_correct,
+          isCorrect: Boolean(o.isCorrect ?? o.is_correct),
         })),
       })),
       maxQuizAttempts: typeof maxAttempts === "number" ? maxAttempts : null,
       attemptsUsed,
       canAttempt,
+      inProgressAttemptId,
     };
 
     if (!canAttempt) {
@@ -137,17 +144,16 @@ export async function POST(
       return NextResponse.json({ error: "معرّف الاختبار غير صالح" }, { status: 400 });
     }
 
-    let body: { score?: number; totalQuestions?: number; attemptId?: string | null };
+    let body: {
+      score?: number;
+      totalQuestions?: number;
+      attemptId?: string | null;
+      answers?: Record<string, string>;
+    };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: "طلب غير صالح" }, { status: 400 });
-    }
-
-    const score = Number(body.score ?? 0);
-    const totalQuestions = Number(body.totalQuestions ?? 0);
-    if (totalQuestions < 1) {
-      return NextResponse.json({ error: "عدد الأسئلة غير صالح" }, { status: 400 });
     }
 
     const result = await getQuizById(quizId);
@@ -162,15 +168,48 @@ export async function POST(
       return NextResponse.json({ error: "غير مسجّل في هذه الدورة" }, { status: 403 });
     }
 
-    const maxAttempts = result.course.max_quiz_attempts ?? result.course.maxQuizAttempts;
-    if (typeof maxAttempts === "number" && maxAttempts > 0) {
-      const used = await countQuizAttemptsByUserAndCourse(session.user.id, courseId);
-      if (used >= maxAttempts) {
-        return NextResponse.json({ error: "تم استنفاد المحاولات" }, { status: 403 });
-      }
+    const answers =
+      body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
+        ? (body.answers as Record<string, string>)
+        : {};
+
+    const questionsForScoring = result.questions.map((q) => ({
+      id: String(q.id),
+      type: String(q.type ?? q.question_type ?? "MULTIPLE_CHOICE"),
+      options: (q.options ?? []).map((o: Record<string, unknown>) => ({
+        id: String(o.id),
+        isCorrect: Boolean(o.isCorrect ?? o.is_correct),
+        is_correct: Boolean(o.is_correct ?? o.isCorrect),
+      })),
+    }));
+
+    const computed = computeQuizScore(questionsForScoring, answers);
+    let score = computed.score;
+    let totalQuestions = computed.totalScored;
+
+    if (totalQuestions < 1) {
+      score = Number(body.score ?? 0);
+      totalQuestions = Number(body.totalQuestions ?? 0);
     }
 
-    const attemptId = typeof body.attemptId === "string" && body.attemptId.trim() ? body.attemptId.trim() : null;
+    if (!Number.isFinite(score) || score < 0) {
+      return NextResponse.json({ error: "النتيجة غير صالحة" }, { status: 400 });
+    }
+    if (!Number.isFinite(totalQuestions) || totalQuestions < 1) {
+      return NextResponse.json({ error: "عدد الأسئلة غير صالح" }, { status: 400 });
+    }
+
+    const normalized = normalizeQuizSubmitTotals(questionsForScoring, score, totalQuestions);
+    score = normalized.score;
+    totalQuestions = normalized.totalQuestions;
+    const passed = normalized.passed;
+
+    let attemptId =
+      typeof body.attemptId === "string" && body.attemptId.trim() ? body.attemptId.trim() : null;
+    if (!attemptId) {
+      attemptId = await getInProgressQuizAttemptId(session.user.id, quizId);
+    }
+
     if (attemptId) {
       const ok = await updateQuizAttemptById({
         attemptId,
@@ -185,7 +224,25 @@ export async function POST(
     } else {
       await createQuizAttempt(session.user.id, quizId, score, totalQuestions);
     }
-    return NextResponse.json({ success: true });
+
+    if (passed) {
+      await insertQuizPassIfNotExists(session.user.id, quizId, courseId);
+    }
+
+    let gamification = null;
+    const role = (session.user as { role?: string }).role;
+    if (role === "STUDENT") {
+      const { awardQuizPoints } = await import("@/lib/gamification");
+      gamification = await awardQuizPoints(
+        session.user.id,
+        quizId,
+        courseId,
+        score,
+        totalQuestions,
+      );
+    }
+
+    return NextResponse.json({ success: true, passed, gamification });
   } catch (e) {
     console.error("API quizzes [quizId] POST:", e);
     return NextResponse.json({ error: "حدث خطأ في تسجيل النتيجة" }, { status: 500 });
