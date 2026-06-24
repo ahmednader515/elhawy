@@ -12,8 +12,9 @@ const GLITTER_COLORS = [
   "#f9a8d4",
 ];
 
-const SPAWN_DISTANCE = 6;
-const MAX_GLITTER = 90;
+const SPAWN_DISTANCE = 14;
+const MAX_GLITTER = 36;
+const GLITTER_THROTTLE_MS = 48;
 // Star tip offset within the 44x44 wand SVG (the cursor "hotspot").
 const TIP_X = 11;
 const TIP_Y = 10;
@@ -23,35 +24,54 @@ export function MagicCursor() {
   const layerRef = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: -100, y: -100 });
   const last = useRef({ x: -100, y: -100 });
-  const rafRef = useRef(0);
   const visibleRef = useRef(false);
   const countRef = useRef(0);
+  const activeRef = useRef(true);
+  const wandRafRef = useRef(0);
+  const lastGlitterAt = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!window.matchMedia("(pointer: fine)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const root = document.documentElement;
     root.classList.add("magic-cursor-active");
 
+    const scheduleWandMove = () => {
+      if (wandRafRef.current) return;
+      wandRafRef.current = window.requestAnimationFrame(() => {
+        wandRafRef.current = 0;
+        if (!wandRef.current || !visibleRef.current) return;
+        wandRef.current.style.transform = `translate3d(${
+          pos.current.x - TIP_X
+        }px, ${pos.current.y - TIP_Y}px, 0)`;
+      });
+    };
+
     const spawnGlitter = (x: number, y: number, burst = false) => {
+      if (!activeRef.current) return;
+
       const layer = layerRef.current;
       if (!layer || countRef.current >= MAX_GLITTER) return;
 
-      const size = 4 + Math.random() * 7;
-      const tx = (Math.random() - 0.5) * (burst ? 90 : 28);
-      const ty = (burst ? 10 : 18) + Math.random() * (burst ? 80 : 60);
-      const dur = 600 + Math.random() * 750;
+      const now = performance.now();
+      if (!burst && now - lastGlitterAt.current < GLITTER_THROTTLE_MS) return;
+      lastGlitterAt.current = now;
+
+      const size = 3 + Math.random() * 5;
+      const tx = (Math.random() - 0.5) * (burst ? 70 : 22);
+      const ty = (burst ? 8 : 14) + Math.random() * (burst ? 60 : 48);
+      const dur = 520 + Math.random() * 520;
       const color = GLITTER_COLORS[(Math.random() * GLITTER_COLORS.length) | 0];
 
       const el = document.createElement("span");
       el.className = "magic-glitter";
-      el.style.left = `${x + (Math.random() - 0.5) * 10}px`;
-      el.style.top = `${y + (Math.random() - 0.5) * 10 + 4}px`;
+      el.style.left = `${x + (Math.random() - 0.5) * 8}px`;
+      el.style.top = `${y + (Math.random() - 0.5) * 8 + 4}px`;
       el.style.width = `${size}px`;
       el.style.height = `${size}px`;
       el.style.background = color;
-      el.style.boxShadow = `0 0 ${size}px ${color}, 0 0 ${size * 2}px ${color}`;
       el.style.setProperty("--tx", `${tx}px`);
       el.style.setProperty("--ty", `${ty}px`);
       el.style.setProperty("--dur", `${dur}ms`);
@@ -65,6 +85,8 @@ export function MagicCursor() {
     };
 
     const onMove = (e: PointerEvent) => {
+      if (!activeRef.current) return;
+
       pos.current.x = e.clientX;
       pos.current.y = e.clientY;
 
@@ -72,6 +94,8 @@ export function MagicCursor() {
         visibleRef.current = true;
         if (wandRef.current) wandRef.current.style.opacity = "1";
       }
+
+      scheduleWandMove();
 
       const dx = e.clientX - last.current.x;
       const dy = e.clientY - last.current.y;
@@ -83,7 +107,7 @@ export function MagicCursor() {
     };
 
     const onDown = () => {
-      for (let i = 0; i < 10; i += 1) {
+      for (let i = 0; i < 5; i += 1) {
         spawnGlitter(pos.current.x, pos.current.y, true);
       }
     };
@@ -93,23 +117,24 @@ export function MagicCursor() {
       if (wandRef.current) wandRef.current.style.opacity = "0";
     };
 
-    const tick = () => {
-      if (wandRef.current) {
-        wandRef.current.style.transform = `translate3d(${
-          pos.current.x - TIP_X
-        }px, ${pos.current.y - TIP_Y}px, 0)`;
+    const onVisibility = () => {
+      activeRef.current = document.visibilityState === "visible";
+      if (!activeRef.current && layerRef.current) {
+        layerRef.current.replaceChildren();
+        countRef.current = 0;
       }
-      rafRef.current = window.requestAnimationFrame(tick);
     };
-    rafRef.current = window.requestAnimationFrame(tick);
 
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerdown", onDown, { passive: true });
     document.addEventListener("pointerleave", hide);
     window.addEventListener("blur", hide);
 
     return () => {
-      window.cancelAnimationFrame(rafRef.current);
+      if (wandRafRef.current) window.cancelAnimationFrame(wandRafRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerdown", onDown);
       document.removeEventListener("pointerleave", hide);

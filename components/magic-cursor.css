@@ -1,6 +1,13 @@
 /* Hide the native cursor only while the magic cursor is active (fine pointers). */
 html.magic-cursor-active,
-html.magic-cursor-active * {
+html.magic-cursor-active a,
+html.magic-cursor-active button,
+html.magic-cursor-active label,
+html.magic-cursor-active [role="button"],
+html.magic-cursor-active input,
+html.magic-cursor-active select,
+html.magic-cursor-active textarea,
+html.magic-cursor-active summary {
   cursor: none !important;
 }
 
@@ -16,6 +23,7 @@ html.magic-cursor-active * {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  contain: strict;
 }
 
 .magic-wand {
@@ -53,7 +61,7 @@ html.magic-cursor-active * {
   border-radius: 9999px;
   pointer-events: none;
   opacity: 0;
-  will-change: transform, opacity;
+  contain: layout style paint;
   animation: magic-glitter-fall var(--dur, 800ms) ease-out forwards;
 }
 
@@ -72,6 +80,10 @@ html.magic-cursor-active * {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .magic-cursor-root {
+    display: none;
+  }
+
   .magic-wand-star {
     animation: none;
   }

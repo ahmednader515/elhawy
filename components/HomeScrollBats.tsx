@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { BatShape } from "@/components/BatShape";
 
-const MAX_BATS = 14;
-const SCROLL_THRESHOLD = 260;
-const SPAWN_COOLDOWN_MS = 420;
+const MAX_BATS = 8;
+const SCROLL_THRESHOLD = 380;
+const SPAWN_COOLDOWN_MS = 650;
 
 export function HomeScrollBats() {
   const layerRef = useRef<HTMLDivElement>(null);
@@ -14,6 +14,7 @@ export function HomeScrollBats() {
   const lastScrollY = useRef(0);
   const lastSpawn = useRef(0);
   const accum = useRef(0);
+  const activeRef = useRef(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -22,18 +23,18 @@ export function HomeScrollBats() {
     if (reduced) return;
 
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const cap = isMobile ? 6 : MAX_BATS;
+    const cap = isMobile ? 4 : MAX_BATS;
 
-    // Render the bat SVG once into a detached template, then clone its markup
-    // for each spawned bat (avoids a React root per bat).
     const template = document.createElement("div");
     const templateRoot = createRoot(template);
-    templateRoot.render(<BatShape className="home-bat-svg" />);
+    templateRoot.render(<BatShape className="home-bat-svg home-bat-svg--static" />);
     let batMarkup = "";
 
     lastScrollY.current = window.scrollY;
 
     const spawnBat = () => {
+      if (!activeRef.current) return;
+
       const layer = layerRef.current;
       if (!layer || countRef.current >= cap) return;
       if (!batMarkup) {
@@ -41,39 +42,36 @@ export function HomeScrollBats() {
         if (!batMarkup) return;
       }
 
-      const size = 34 + Math.random() * 46;
+      const size = 34 + Math.random() * 40;
       const top = 5 + Math.random() * 70;
-      const duration = 3 + Math.random() * 2.4;
-      const drift = (Math.random() - 0.5) * 16;
-      const flap = 0.16 + Math.random() * 0.1;
+      const duration = 3.2 + Math.random() * 2;
+      const drift = (Math.random() - 0.5) * 14;
 
       const host = document.createElement("div");
       host.className = "home-bat";
       host.style.top = `${top}%`;
       host.style.width = `${size}px`;
       host.style.height = `${size * 0.45}px`;
-      host.style.setProperty("--flap", `${flap}s`);
-      host.style.transform = "translate3d(110vw, 0, 0) rotate(-90deg)";
+      host.style.setProperty("--drift", `${drift}px`);
+      host.style.setProperty("--duration", `${duration}s`);
       host.innerHTML = batMarkup;
 
       layer.appendChild(host);
       countRef.current += 1;
 
-      const animation = host.animate(
-        [
-          { transform: "translate3d(110vw, 0, 0) rotate(-90deg)" },
-          { transform: `translate3d(-25vw, ${drift}px, 0) rotate(-90deg)` },
-        ],
-        { duration: duration * 1000, easing: "linear", fill: "forwards" },
+      host.addEventListener(
+        "animationend",
+        () => {
+          host.remove();
+          countRef.current -= 1;
+        },
+        { once: true },
       );
-
-      animation.onfinish = () => {
-        host.remove();
-        countRef.current -= 1;
-      };
     };
 
     const onScroll = () => {
+      if (!activeRef.current) return;
+
       const y = window.scrollY;
       const dy = Math.abs(y - lastScrollY.current);
       accum.current += dy;
@@ -87,14 +85,22 @@ export function HomeScrollBats() {
         accum.current = 0;
         lastSpawn.current = now;
         spawnBat();
-        if (Math.random() > 0.6) {
-          window.setTimeout(spawnBat, 180);
-        }
       }
     };
 
+    const onVisibility = () => {
+      activeRef.current = document.visibilityState === "visible";
+      if (!activeRef.current && layerRef.current) {
+        layerRef.current.replaceChildren();
+        countRef.current = 0;
+      }
+    };
+
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("scroll", onScroll);
       window.setTimeout(() => templateRoot.unmount(), 0);
     };
