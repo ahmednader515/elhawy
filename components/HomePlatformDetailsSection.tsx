@@ -50,8 +50,8 @@ export function HomePlatformDetailsSection({
           </p>
         ) : null}
         <div className="mt-10 grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {items.map((item, index) => (
-            <ManuscriptCard key={item.id} index={index}>
+          {items.map((item) => (
+            <ManuscriptCard key={item.id}>
               <div className="manuscript-icon">
                 {item.iconType === "upload" && item.customIconUrl ? (
                   <img src={item.customIconUrl} alt="" className="h-8 w-8 object-contain" aria-hidden />

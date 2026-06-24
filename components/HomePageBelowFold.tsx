@@ -49,58 +49,53 @@ export async function HomePageBelowFold({
   session: Session | null;
 }) {
   const [t, locale] = await Promise.all([getServerTranslator(), getLocaleFromCookie()]);
-  let courses: CourseWithCategory[] = [];
-  let categories: Awaited<ReturnType<typeof getCategories>> = [];
-  let reviews: Awaited<ReturnType<typeof getReviews>> = [];
-  let teachersForHome: Awaited<ReturnType<typeof listTeachersForHomepage>> = [];
-  let subscriptionPlansHome: Awaited<ReturnType<typeof listActiveSubscriptionPlansPublic>> = [];
-  let storeProductsHome: Awaited<ReturnType<typeof listStoreProductsPublic>> = [];
 
-  if (homepageSettings.teachersEnabled) {
-    try {
-      teachersForHome = await listTeachersForHomepage();
-    } catch {
-      /* جدول أو أعمدة غير جاهزة */
-    }
-  }
-  if (homepageSettings.subscriptionsEnabled) {
-    try {
-      subscriptionPlansHome = await listActiveSubscriptionPlansPublic();
-    } catch {
-      /* جداول الاشتراك غير جاهزة */
-    }
-  }
-  if (homepageSettings.storeEnabled) {
-    try {
-      storeProductsHome = await listStoreProductsPublic();
-    } catch {
-      /* جداول المتجر غير جاهزة */
-    }
-  }
-
-  let studentPlatformSubscription: { active: boolean; expiresAtIso: string | null } | null = null;
-  if (
+  const needStudentSub =
     homepageSettings.subscriptionsEnabled &&
     session?.user?.role === "STUDENT" &&
-    session.user.id
-  ) {
-    try {
-      const active = await userHasActivePlatformSubscription(session.user.id);
-      const exp = active ? await getLatestPlatformSubscriptionExpiry(session.user.id) : null;
-      studentPlatformSubscription = {
-        active,
-        expiresAtIso: exp ? exp.toISOString() : null,
-      };
-    } catch {
-      studentPlatformSubscription = { active: false, expiresAtIso: null };
-    }
-  }
+    Boolean(session?.user?.id);
 
-  try {
-    [courses, categories] = await Promise.all([getCoursesPublished(true), getCategories()]);
-  } catch {
-    // لا قاعدة بيانات أو غير متصلة
-  }
+  const [
+    teachersForHome,
+    subscriptionPlansHome,
+    storeProductsHome,
+    studentPlatformSubscription,
+    coursesCategories,
+    reviews,
+  ] = await Promise.all([
+    homepageSettings.teachersEnabled
+      ? listTeachersForHomepage().catch(() => [] as Awaited<ReturnType<typeof listTeachersForHomepage>>)
+      : Promise.resolve([] as Awaited<ReturnType<typeof listTeachersForHomepage>>),
+    homepageSettings.subscriptionsEnabled
+      ? listActiveSubscriptionPlansPublic().catch(
+          () => [] as Awaited<ReturnType<typeof listActiveSubscriptionPlansPublic>>,
+        )
+      : Promise.resolve([] as Awaited<ReturnType<typeof listActiveSubscriptionPlansPublic>>),
+    homepageSettings.storeEnabled
+      ? listStoreProductsPublic().catch(() => [] as Awaited<ReturnType<typeof listStoreProductsPublic>>)
+      : Promise.resolve([] as Awaited<ReturnType<typeof listStoreProductsPublic>>),
+    needStudentSub && session?.user?.id
+      ? (async () => {
+          try {
+            const active = await userHasActivePlatformSubscription(session.user.id);
+            const exp = active ? await getLatestPlatformSubscriptionExpiry(session.user.id) : null;
+            return {
+              active,
+              expiresAtIso: exp ? exp.toISOString() : null,
+            };
+          } catch {
+            return { active: false, expiresAtIso: null };
+          }
+        })()
+      : Promise.resolve(null as { active: boolean; expiresAtIso: string | null } | null),
+    Promise.all([getCoursesPublished(true), getCategories()]).catch(
+      () => [[], []] as [CourseWithCategory[], Awaited<ReturnType<typeof getCategories>>],
+    ),
+    getReviews().catch(() => [] as Awaited<ReturnType<typeof getReviews>>),
+  ]);
+
+  let courses: CourseWithCategory[] = [...coursesCategories[0]];
+  const categories = coursesCategories[1];
 
   if (homepageSettings.teachersEnabled && teachersForHome.length > 0) {
     const teacherAccountIds = new Set(teachersForHome.map((t) => t.id));
@@ -111,12 +106,6 @@ export async function HomePageBelowFold({
         null;
       return !creator || !teacherAccountIds.has(creator);
     });
-  }
-
-  try {
-    reviews = await getReviews();
-  } catch {
-    /* جدول التعليقات غير موجود */
   }
 
   const platformNewsSlides = parsePlatformNewsItems(homepageSettings.platformNewsItems);

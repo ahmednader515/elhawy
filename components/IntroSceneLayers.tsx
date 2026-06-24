@@ -1,8 +1,9 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useCallback, useRef, type CSSProperties } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { INTRO_SCENE_IMAGE_COUNT } from "@/lib/introImages";
 
 const GATE_OPEN_DURATION = 2;
 
@@ -65,6 +66,7 @@ function Prop({
   style,
   priority = false,
   flip = false,
+  onImageLoad,
 }: {
   src: string;
   nat: Nat;
@@ -74,6 +76,7 @@ function Prop({
   style?: CSSProperties;
   priority?: boolean;
   flip?: boolean;
+  onImageLoad?: () => void;
 }) {
   return (
     <div
@@ -91,6 +94,9 @@ function Prop({
         sizes="100vw"
         className="intro-prop-img"
         priority={priority}
+        unoptimized
+        onLoad={onImageLoad}
+        onError={onImageLoad}
         aria-hidden
       />
     </div>
@@ -99,9 +105,21 @@ function Prop({
 
 type IntroSceneLayersProps = {
   gatesOpen: boolean;
+  onSceneReady?: () => void;
 };
 
-export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
+export function IntroSceneLayers({ gatesOpen, onSceneReady }: IntroSceneLayersProps) {
+  const loadedRef = useRef(0);
+  const readyFiredRef = useRef(false);
+
+  const handleImageLoad = useCallback(() => {
+    loadedRef.current += 1;
+    if (!readyFiredRef.current && loadedRef.current >= INTRO_SCENE_IMAGE_COUNT) {
+      readyFiredRef.current = true;
+      onSceneReady?.();
+    }
+  }, [onSceneReady]);
+
   return (
     <div className="intro-stage">
       <div className="intro-sky" aria-hidden />
@@ -113,6 +131,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[4.1, 18.2, 98, 75.9]}
         target={{ left: 0, top: 2, width: 100 }}
         className="intro-prop--clouds"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/moon.png"
@@ -121,6 +140,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         target={{ left: 2, top: 3, width: 12 }}
         className="intro-prop--moon"
         priority
+        onImageLoad={handleImageLoad}
       />
 
       {/* distant castles — towers must clear the foreground rock peaks */}
@@ -130,6 +150,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[16, 1.5, 87.3, 97.3]}
         target={{ left: -8, top: 20, width: 50 }}
         className="intro-prop--castle"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/right-castle.png"
@@ -137,6 +158,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[27.1, 2.6, 85.4, 92.5]}
         target={{ left: 70, top: 15, width: 40 }}
         className="intro-prop--castle"
+        onImageLoad={handleImageLoad}
       />
 
       {/* framing trees */}
@@ -146,6 +168,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[24.4, 2.5, 64, 99.7]}
         target={{ left: -3, top: -2, width: 20 }}
         className="intro-prop--tree"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/right-tree.png"
@@ -153,6 +176,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[14.6, 0, 78.8, 99.8]}
         target={{ left: 84, top: 25, width: 20 }}
         className="intro-prop--tree"
+        onImageLoad={handleImageLoad}
       />
 
       {/* railing behind columns */}
@@ -162,6 +186,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[7, 25.8, 93.3, 77.8]}
         target={{ left: -2, top: 53, width: 36 }}
         className="intro-prop--fence"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/fence.png"
@@ -170,6 +195,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         target={{ left: 66, top: 44, width: 36 }}
         className="intro-prop--fence"
         flip
+        onImageLoad={handleImageLoad}
       />
 
       {/* ── behind the gate: ground path leading to a distant castle ── */}
@@ -179,6 +205,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[27.1, 2.6, 85.4, 92.5]}
         target={{ left: 30, top: 5, width: 40}}
         className="intro-prop--portal-castle"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/ground.png"
@@ -186,6 +213,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[0, 47.2, 99.8, 91.4]}
         target={{ left: 30, top: 65, width: 50 }}
         className="intro-prop--portal-ground"
+        onImageLoad={handleImageLoad}
       />
 
       {/* central gate assembly — scaled down on narrow viewports */}
@@ -230,6 +258,9 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
           sizes="100vw"
           className="intro-prop-img intro-prop-img--fill"
           priority
+          unoptimized
+          onLoad={handleImageLoad}
+          onError={handleImageLoad}
           aria-hidden
         />
       </motion.div>
@@ -260,6 +291,9 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
           sizes="100vw"
           className="intro-prop-img intro-prop-img--fill"
           priority
+          unoptimized
+          onLoad={handleImageLoad}
+          onError={handleImageLoad}
           aria-hidden
         />
       </motion.div>
@@ -281,6 +315,9 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
           sizes="100vw"
           className="intro-prop-img intro-prop-img--fill"
           priority
+          unoptimized
+          onLoad={handleImageLoad}
+          onError={handleImageLoad}
           aria-hidden
         />
       </div>
@@ -300,6 +337,9 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
           sizes="100vw"
           className="intro-prop-img intro-prop-img--fill"
           priority
+          unoptimized
+          onLoad={handleImageLoad}
+          onError={handleImageLoad}
           aria-hidden
         />
       </div>
@@ -311,6 +351,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[25.5, 1.3, 78.1, 92.2]}
         target={{ left: 23, top: 8, width: 8 }}
         className="intro-prop--flame"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/right-flame.png"
@@ -318,6 +359,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[32.8, 3.2, 74.8, 90.1]}
         target={{ left: 69.3, top: 8.5, width: 8 }}
         className="intro-prop--flame"
+        onImageLoad={handleImageLoad}
       />
       </div>
 
@@ -328,6 +370,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[36.1, 3.2, 63.5, 96.4]}
         target={{ left: 87, top: 55, width: 9 }}
         className="intro-prop--tombstone"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/ground.png"
@@ -335,6 +378,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[0, 47.2, 99.8, 91.4]}
         target={{ left: 8, top: 78, width: 84 }}
         className="intro-prop--ground"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/rocks.png"
@@ -342,6 +386,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[0, 42.2, 99.8, 99.9]}
         target={{ left: 0, top: 44, width: 100 }}
         className="intro-prop--rocks"
+        onImageLoad={handleImageLoad}
       />
 
       {/* atmosphere */}
@@ -351,6 +396,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[1.4, 9.9, 99.4, 86.2]}
         target={{ left: -5, top: 50, width: 110 }}
         className="intro-prop--fog intro-blend-screen"
+        onImageLoad={handleImageLoad}
       />
       <Prop
         src="/intro/particles.png"
@@ -358,6 +404,7 @@ export function IntroSceneLayers({ gatesOpen }: IntroSceneLayersProps) {
         bbox={[31.4, 23, 94, 74]}
         target={{ left: 50, top: 28, width: 25 }}
         className="intro-prop--particles intro-blend-screen"
+        onImageLoad={handleImageLoad}
       />
     </div>
   );

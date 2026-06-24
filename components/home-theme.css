@@ -86,7 +86,7 @@ html.dark .home-themed,
 }
 
 /* ============================================================
-   Hero decor — moon + rays, trees, stones
+   Hero decor — moon + rays, hero tree
    ============================================================ */
 .home-hero-decor {
   position: absolute;
@@ -178,47 +178,63 @@ html.dark .home-themed,
   animation: home-ray-pulse 7s ease-in-out infinite;
 }
 
-/* Intro trees along the hero base. */
-.home-hero-trees {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: clamp(0rem, 0vw, 7rem);
+/* Hero tree — arches from the left over the teacher portrait. */
+.home-hero-teacher-wrap {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-hero-teacher-wrap .float-icon {
   z-index: 4;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 clamp(0.25rem, 3vw, 2rem);
-  pointer-events: none;
 }
 
 .home-hero-tree {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
   display: block;
-  height: clamp(7rem, 16vw, 13rem);
+  /* Match desktop hug: trunk left, arch over portrait (teacher is 15rem on mobile). */
+  height: calc(20rem * 2.6);
   width: auto;
+  max-width: min(46rem, 145vw);
+  left: 70%;
+  bottom: -180%;
+  transform: translateX(-80%);
   object-fit: contain;
-  object-position: bottom;
-  opacity: 0.88;
-  filter: brightness(0.72) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.55));
+  object-position: left bottom;
+  opacity: 0.94;
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.55));
 }
 
-.home-hero-tree--left {
-  margin-left: clamp(-1.5rem, -2vw, -0.5rem);
+/* Tablet — same proportions as desktop (teacher is 18rem). */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .home-hero-tree {
+    height: calc(23rem * 2.6);
+    max-width: min(46rem, 88vw);
+    bottom: -150%;
+    transform: translateX(-80%);
+  }
 }
 
-.home-hero-tree--right {
-  margin-right: clamp(-1.5rem, -2vw, -0.5rem);
-}
-
-@media (max-width: 768px) {
-  .home-hero-trees {
-    bottom: 2rem;
-    padding: 0;
+/* Tree may extend below the portrait on stacked layouts — keep copy above it. */
+@media (max-width: 1023px) {
+  .home-hero-teacher-col {
+    position: relative;
+    z-index: 1;
   }
 
+  .home-hero-copy {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+@media (min-width: 1024px) {
   .home-hero-tree {
-    height: clamp(5rem, 14vw, 7rem);
-    opacity: 0.75;
+    height: clamp(55rem, 42vw, 44rem);
+    max-width: min(46rem, 62vw);
+    transform: translateX(-80%);
+    bottom: -120%;
   }
 }
 
@@ -263,6 +279,7 @@ html.dark .home-themed,
   position: absolute;
   left: 0;
   will-change: transform;
+  transform-origin: center center;
   filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.5));
 }
 
@@ -413,12 +430,6 @@ html.dark .home-themed,
 
 .manuscript-paper {
   display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.95s cubic-bezier(0.5, 0.05, 0.2, 1);
-  transition-delay: var(--delay, 0s);
-}
-
-.manuscript.is-open .manuscript-paper {
   grid-template-rows: 1fr;
 }
 
@@ -514,16 +525,10 @@ html.dark .home-themed,
       #9a7040 86%,
       #8a6238 100%
     );
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  transition-delay: calc(var(--delay, 0s) + 0.45s);
+  opacity: 1;
   box-shadow:
     inset 0 0 48px rgba(50, 28, 10, 0.38),
     inset 0 -12px 24px rgba(40, 22, 8, 0.2);
-}
-
-.manuscript.is-open .manuscript-content {
-  opacity: 1;
 }
 
 /* Heavy edge burn + corner staining. */
@@ -599,10 +604,5 @@ html.dark .home-themed,
   .home-moon-rays,
   .home-moon-halo {
     animation: none;
-  }
-
-  .manuscript-paper,
-  .manuscript-content {
-    transition: none;
   }
 }

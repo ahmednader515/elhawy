@@ -14,9 +14,8 @@ import {
   HomePageBelowFold,
   HomePageBelowFoldFallback,
 } from "@/components/HomePageBelowFold";
-import { IntroGateOverlay } from "@/components/IntroGateOverlay";
 import { HomeHeroDecor } from "@/components/HomeHeroDecor";
-import { HomeScrollBats } from "@/components/HomeScrollBats";
+import { HomeScrollBatsLazy } from "@/components/HomeScrollBatsLazy";
 import { HomeEdgeDecor } from "@/components/HomeEdgeDecor";
 import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
@@ -89,9 +88,8 @@ export default async function HomePage() {
     typeof homepageSettings.heroSliderIntervalMs === "number"
       ? homepageSettings.heroSliderIntervalMs
       : 5000;
-  const heroTextAlignClass = locale === "en" ? "text-left" : "text-right";
-
-  preload("/intro/audio/background.mp3", { as: "audio" });
+  const heroTextAlignClass =
+    locale === "en" ? "text-center lg:text-left" : "text-center lg:text-right";
 
   if (heroTemplate === "image_slider" && heroSliderSlides[0]?.src) {
     preload(heroSliderSlides[0].src, { as: "image" });
@@ -102,9 +100,8 @@ export default async function HomePage() {
 
   return (
     <div className={`home-themed ${arefRuqaa.variable} ${elMessiri.variable}`}>
-      <IntroGateOverlay />
       <HomeEdgeDecor />
-      <HomeScrollBats />
+      <HomeScrollBatsLazy />
       {heroTemplate === "image_slider" ? (
         <section
           className="relative w-full overflow-hidden bg-[var(--color-background)]"
@@ -167,7 +164,7 @@ export default async function HomePage() {
           <HeroShootingStar />
           <div className="hero-saas-content relative z-10 mx-auto w-full max-w-6xl min-h-screen flex items-center justify-center px-4 py-16 sm:px-6 -mt-32">
             <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-44 xl:gap-52">
-              <div className={`flex-1 ${heroTextAlignClass} order-2 lg:order-1 lg:max-w-2xl`}>
+              <div className={`home-hero-copy flex-1 ${heroTextAlignClass} order-2 lg:order-1 lg:max-w-2xl`}>
                 <h1 className="home-hero-title text-5xl font-bold leading-tight sm:text-6xl lg:text-7xl">
                   {pickLocalizedText(locale, homepageSettings.heroTitle, homepageSettings.heroTitleEn) || t("home.defaultHeroTitle", "Mr. Essam Mohy")}
                 </h1>
@@ -175,9 +172,18 @@ export default async function HomePage() {
                   {pickLocalizedText(locale, homepageSettings.heroSlogan, homepageSettings.heroSloganEn) || t("home.defaultHeroSlogan", "Study it... and finally understand it right!")}
                 </p>
               </div>
-              <div className="flex-shrink-0 order-1 lg:order-2 lg:ml-6">
-                <div className="relative">
-                  <div className="hero-image-frame h-60 w-60 p-[2px] sm:h-72 sm:w-72 lg:h-80 lg:w-80">
+              <div className="home-hero-teacher-col flex-shrink-0 order-1 lg:order-2 lg:ml-6">
+                <div className="home-hero-teacher-wrap relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/intro/hero-tree.png"
+                    alt=""
+                    className="home-hero-tree"
+                    aria-hidden
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="hero-image-frame relative z-[2] h-60 w-60 p-[2px] sm:h-72 sm:w-72 lg:h-80 lg:w-80">
                     <div className="relative h-full w-full">
                       <Image
                         src={homepageSettings.teacherImageUrl || "/instructor.png"}

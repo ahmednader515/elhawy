@@ -1,10 +1,22 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { INTRO_COOKIE_NAME } from "@/lib/introImages";
 
 export default withAuth(
   function middleware(req) {
-    const role = req.nextauth.token?.role as string;
     const path = req.nextUrl.pathname;
+
+    // First-time visitors enter via /intro; after completion a short-lived cookie
+    // lets router.replace("/") reach the homepage without a redirect loop.
+    if (path === "/" && req.cookies.get(INTRO_COOKIE_NAME)?.value !== "1") {
+      return NextResponse.redirect(new URL("/intro", req.url));
+    }
+
+    if (!path.startsWith("/dashboard")) {
+      return NextResponse.next();
+    }
+
+    const role = req.nextauth.token?.role as string;
 
     if (path.startsWith("/dashboard/teachers")) {
       if (role === "ADMIN") return NextResponse.next();
@@ -40,9 +52,16 @@ export default withAuth(
 
     return NextResponse.next();
   },
-  { callbacks: { authorized: ({ token }) => !!token } }
+  {
+    callbacks: {
+      authorized: ({ token, req }) => {
+        if (!req.nextUrl.pathname.startsWith("/dashboard")) return true;
+        return !!token;
+      },
+    },
+  },
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/", "/dashboard/:path*"],
 };

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import type { UserRole } from "@/lib/types";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useT, useLocalizedEnumValue } from "@/components/LocaleProvider";
 
@@ -118,7 +117,6 @@ export function Header({
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">
             <LanguageToggle />
-            <ThemeToggle />
           </div>
         </div>
 
@@ -177,7 +175,6 @@ export function Header({
         </Link>
         <nav className="flex flex-shrink-0 items-center gap-2 sm:gap-7">
           <LanguageToggle />
-          <ThemeToggle />
           <Link
             href="/"
             className="hidden text-base font-medium text-[var(--color-muted)] transition hover:text-[var(--color-foreground)] sm:inline-block"

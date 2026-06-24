@@ -676,6 +676,16 @@
   background: #06040c;
 }
 
+/* Hidden mount for scene image preload — keeps images in layout without showing partial scene */
+.intro-scene-preload {
+  position: fixed;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
 /* ── Bat swarm transition ── */
 .intro-bats {
   position: fixed;

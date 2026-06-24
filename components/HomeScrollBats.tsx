@@ -53,7 +53,7 @@ export function HomeScrollBats() {
       host.style.width = `${size}px`;
       host.style.height = `${size * 0.45}px`;
       host.style.setProperty("--flap", `${flap}s`);
-      host.style.transform = "translate3d(110vw, 0, 0)";
+      host.style.transform = "translate3d(110vw, 0, 0) rotate(-90deg)";
       host.innerHTML = batMarkup;
 
       layer.appendChild(host);
@@ -61,8 +61,8 @@ export function HomeScrollBats() {
 
       const animation = host.animate(
         [
-          { transform: "translate3d(110vw, 0, 0)" },
-          { transform: `translate3d(-25vw, ${drift}px, 0)` },
+          { transform: "translate3d(110vw, 0, 0) rotate(-90deg)" },
+          { transform: `translate3d(-25vw, ${drift}px, 0) rotate(-90deg)` },
         ],
         { duration: duration * 1000, easing: "linear", fill: "forwards" },
       );

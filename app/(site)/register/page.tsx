@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import LoginBackground from "@/app/login/LoginBackground";
+import LoginBackground from "@/app/(site)/login/LoginBackground";
 import { useT } from "@/components/LocaleProvider";
 
 export default function RegisterPage() {

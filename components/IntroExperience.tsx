@@ -2,12 +2,19 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { El_Messiri } from "next/font/google";
 import { IntroGate } from "@/components/IntroGate";
 import { IntroMarqueeFrame } from "@/components/IntroMarqueeFrame";
+import { IntroSceneLayers } from "@/components/IntroSceneLayers";
 import { BatSwarmTransition } from "@/components/BatSwarmTransition";
-import { ensureIntroBackgroundPlaying } from "@/lib/introBackgroundAudio";
+import {
+  ensureIntroBackgroundPlaying,
+  preloadIntroBackgroundAudio,
+  unlockIntroBackgroundAudio,
+} from "@/lib/introBackgroundAudio";
+import { INTRO_IMAGES } from "@/lib/introImages";
 import { hasIntroBeenCompleted, markIntroCompleted } from "@/lib/introSession";
 import "./intro-gate.css";
 
@@ -17,60 +24,47 @@ const elMessiri = El_Messiri({
   display: "swap",
 });
 
-const INTRO_IMAGES = [
-  "/intro/clouds.png",
-  "/intro/moon.png",
-  "/intro/left-castle.png",
-  "/intro/right-castle.png",
-  "/intro/left-tree.png",
-  "/intro/right-tree.png",
-  "/intro/fence.png",
-  "/intro/ground.png",
-  "/intro/gate-left.png",
-  "/intro/gate-right.png",
-  "/intro/left-column.png",
-  "/intro/right-column.png",
-  "/intro/left-flame.png",
-  "/intro/right-flame.png",
-  "/intro/tombstone.png",
-  "/intro/rocks.png",
-  "/intro/fog.png",
-  "/intro/particles.png",
-];
-
 const MIN_LOADING_MS = 700;
 
-type Phase = "loading" | "ready" | "intro" | "bats" | "done";
+type Phase = "loading" | "ready" | "sceneLoading" | "intro" | "bats" | "done";
 
-export function IntroGateOverlay() {
+export function IntroExperience() {
+  const router = useRouter();
+  const [skipIntro, setSkipIntro] = useState(false);
   const [mounted, setMounted] = useState(false);
-  /** Default to done so returning visitors see the homepage immediately (SSR + first paint). */
-  const [phase, setPhase] = useState<Phase>("done");
+  const [phase, setPhase] = useState<Phase>("loading");
   const [progress, setProgress] = useState(0);
   const [covered, setCovered] = useState(false);
 
   useLayoutEffect(() => {
-    if (!hasIntroBeenCompleted()) {
-      setPhase("loading");
+    if (hasIntroBeenCompleted()) {
+      setSkipIntro(true);
+      markIntroCompleted();
+      router.replace("/");
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Lock scroll for every phase except the final dismissal.
   useEffect(() => {
-    if (phase === "done") return;
+    if (skipIntro) return;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [phase]);
+  }, [skipIntro]);
+
+  // Preload background music as early as possible on the intro route.
+  useEffect(() => {
+    if (skipIntro) return;
+    preloadIntroBackgroundAudio();
+  }, [skipIntro]);
 
   // Preload all intro artwork, then advance to the "ready" prompt.
   useEffect(() => {
-    if (phase !== "loading") return;
+    if (skipIntro || phase !== "loading") return;
 
     let cancelled = false;
     let loaded = 0;
@@ -95,12 +89,13 @@ export function IntroGateOverlay() {
 
     INTRO_IMAGES.forEach((src) => {
       const img = new Image();
-      img.onload = bump;
+      img.onload = () => {
+        void img.decode?.().finally(bump);
+      };
       img.onerror = bump;
       img.src = src;
     });
 
-    // Safety net in case some asset never resolves.
     const safety = window.setTimeout(() => {
       if (!cancelled) setPhase("ready");
     }, 8000);
@@ -109,13 +104,26 @@ export function IntroGateOverlay() {
       cancelled = true;
       window.clearTimeout(safety);
     };
-  }, [phase]);
+  }, [phase, skipIntro]);
 
   const handleReady = useCallback(() => {
-    // This runs from a user click — the gesture that unlocks audio.
-    ensureIntroBackgroundPlaying();
+    // Unlock audio synchronously inside the click gesture, then start playback.
+    unlockIntroBackgroundAudio();
+    setPhase("sceneLoading");
+  }, []);
+
+  const handleSceneReady = useCallback(() => {
     setPhase("intro");
   }, []);
+
+  // Safety net if some scene image never resolves during preload mount.
+  useEffect(() => {
+    if (phase !== "sceneLoading") return;
+    const safety = window.setTimeout(() => {
+      setPhase((current) => (current === "sceneLoading" ? "intro" : current));
+    }, 10000);
+    return () => window.clearTimeout(safety);
+  }, [phase]);
 
   const handleZoomStart = useCallback(() => {
     setPhase("bats");
@@ -127,29 +135,47 @@ export function IntroGateOverlay() {
 
   const handleBatsComplete = useCallback(() => {
     markIntroCompleted();
+    ensureIntroBackgroundPlaying();
     setPhase("done");
-  }, []);
+    router.replace("/");
+  }, [router]);
 
-  if (phase === "done") return null;
+  const showBackdrop =
+    phase === "loading" || phase === "ready" || phase === "sceneLoading";
 
-  // The intro scene is opaque and handles its own reveal, so the solid backdrop
-  // is only needed while the loading/ready overlays crossfade.
-  const showBackdrop = phase === "loading" || phase === "ready";
+  if (skipIntro || phase === "done") {
+    return null;
+  }
 
   return (
     <>
-      {/* Server-rendered opaque backdrop — present from first paint, hides the
-          homepage and stays solid through the loading→ready crossfade. */}
       {showBackdrop && <div className="intro-root-backdrop" aria-hidden />}
+
+      {phase === "sceneLoading" && (
+        <div className="intro-scene-preload" aria-hidden>
+          <IntroSceneLayers gatesOpen={false} onSceneReady={handleSceneReady} />
+        </div>
+      )}
 
       {mounted &&
         createPortal(
           <AnimatePresence>
             {phase === "loading" && (
-              <IntroLoadingScreen key="loading" progress={progress} />
+              <IntroLoadingScreen
+                key="loading"
+                progress={progress}
+                message="جارٍ تجهيز البوابة…"
+              />
             )}
             {phase === "ready" && (
               <IntroReadyGate key="ready" onReady={handleReady} />
+            )}
+            {phase === "sceneLoading" && (
+              <IntroLoadingScreen
+                key="scene-loading"
+                progress={100}
+                message="جارٍ بناء المشهد…"
+              />
             )}
             {(phase === "intro" || (phase === "bats" && !covered)) && (
               <IntroGate
@@ -173,7 +199,13 @@ export function IntroGateOverlay() {
   );
 }
 
-function IntroLoadingScreen({ progress }: { progress: number }) {
+function IntroLoadingScreen({
+  progress,
+  message,
+}: {
+  progress: number;
+  message: string;
+}) {
   return (
     <motion.div
       className={`intro-loading ${elMessiri.className}`}
@@ -196,7 +228,9 @@ function IntroLoadingScreen({ progress }: { progress: number }) {
             style={{ width: `${Math.max(6, progress)}%` }}
           />
         </div>
-        <p className="intro-loading-text">جارٍ تجهيز البوابة… {progress}%</p>
+        <p className="intro-loading-text">
+          {message} {progress}%
+        </p>
       </div>
     </motion.div>
   );

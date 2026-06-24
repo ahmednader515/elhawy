@@ -2,16 +2,7 @@ const BACKGROUND_SRC = "/intro/audio/background.mp3";
 const BACKGROUND_VOLUME = 0.45;
 const MUTE_STORAGE_KEY = "hawi-background-muted";
 
-type WindowWithWebkit = Window &
-  typeof globalThis & {
-    webkitAudioContext?: typeof AudioContext;
-  };
-
-let audioContext: AudioContext | null = null;
-let gainNode: GainNode | null = null;
-let sourceNode: AudioBufferSourceNode | null = null;
-let decodedBuffer: AudioBuffer | null = null;
-let bufferPromise: Promise<AudioBuffer | null> | null = null;
+let htmlAudio: HTMLAudioElement | null = null;
 let interactionBound = false;
 let isPlaying = false;
 let isMuted = false;
@@ -32,10 +23,19 @@ function emitMuteChange(): void {
   muteListeners.forEach((listener) => listener());
 }
 
-function applyGain(): void {
-  if (!gainNode || !audioContext) return;
-  const volume = isMuted ? 0 : BACKGROUND_VOLUME;
-  gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+function getHtmlAudio(): HTMLAudioElement {
+  if (!htmlAudio) {
+    htmlAudio = new Audio(BACKGROUND_SRC);
+    htmlAudio.loop = true;
+    htmlAudio.preload = "auto";
+  }
+  return htmlAudio;
+}
+
+function syncVolume(): void {
+  initMutedFromStorage();
+  const audio = getHtmlAudio();
+  audio.volume = isMuted ? 0 : BACKGROUND_VOLUME;
 }
 
 export function subscribeIntroBackgroundMuted(listener: () => void): () => void {
@@ -59,7 +59,7 @@ export function setIntroBackgroundMuted(muted: boolean): void {
   } catch {
     // ignore storage errors
   }
-  applyGain();
+  syncVolume();
   emitMuteChange();
 }
 
@@ -68,71 +68,17 @@ export function toggleIntroBackgroundMuted(): boolean {
   return isMuted;
 }
 
-function getAudioContext(): AudioContext | null {
-  if (audioContext) return audioContext;
-  if (typeof window === "undefined") return null;
-
-  const Ctor =
-    window.AudioContext ?? (window as WindowWithWebkit).webkitAudioContext;
-  if (!Ctor) return null;
-
-  audioContext = new Ctor();
-  gainNode = audioContext.createGain();
-  initMutedFromStorage();
-  applyGain();
-  gainNode.connect(audioContext.destination);
-  return audioContext;
-}
-
-function loadBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
-  if (decodedBuffer) return Promise.resolve(decodedBuffer);
-  if (bufferPromise) return bufferPromise;
-
-  bufferPromise = fetch(BACKGROUND_SRC)
-    .then((res) => res.arrayBuffer())
-    .then((data) => ctx.decodeAudioData(data))
-    .then((buf) => {
-      decodedBuffer = buf;
-      return buf;
+function playHtmlAudio(): Promise<void> {
+  const audio = getHtmlAudio();
+  syncVolume();
+  return audio
+    .play()
+    .then(() => {
+      isPlaying = true;
     })
-    .catch(() => null);
-
-  return bufferPromise;
-}
-
-function startSource(ctx: AudioContext, buf: AudioBuffer): void {
-  if (isPlaying && sourceNode) return;
-  if (!gainNode) return;
-
-  const source = ctx.createBufferSource();
-  source.buffer = buf;
-  // Looping a decoded buffer is sample-accurate — no gap between iterations.
-  source.loop = true;
-  source.connect(gainNode);
-  source.start(0);
-
-  sourceNode = source;
-  isPlaying = true;
-}
-
-async function tryStart(): Promise<void> {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  if (ctx.state === "suspended") {
-    try {
-      await ctx.resume();
-    } catch {
-      // Browser still requires a user gesture — interaction listeners handle it.
-    }
-  }
-
-  const buf = await loadBuffer(ctx);
-  if (!buf) return;
-
-  if (ctx.state === "running") {
-    startSource(ctx, buf);
-  }
+    .catch(() => {
+      isPlaying = false;
+    });
 }
 
 function bindInteraction(): void {
@@ -140,7 +86,7 @@ function bindInteraction(): void {
   interactionBound = true;
 
   const onGesture = () => {
-    void tryStart();
+    void playHtmlAudio();
   };
 
   window.addEventListener("pointerdown", onGesture);
@@ -148,25 +94,41 @@ function bindInteraction(): void {
   window.addEventListener("touchstart", onGesture, { passive: true });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void tryStart();
+    if (document.visibilityState === "visible" && isPlaying) {
+      void playHtmlAudio();
+    }
   });
 }
 
-/** Start (or resume) the gapless intro background music. Safe to call repeatedly. */
+/** Warm the MP3 cache without starting playback (no AudioContext needed). */
+export function preloadIntroBackgroundAudio(): void {
+  if (typeof window === "undefined") return;
+  const audio = getHtmlAudio();
+  audio.load();
+}
+
+/** Start (or resume) background music. Safe to call repeatedly. */
 export function ensureIntroBackgroundPlaying(): void {
   if (typeof window === "undefined") return;
   bindInteraction();
-  void tryStart();
+  if (!isPlaying) {
+    void playHtmlAudio();
+  }
+}
+
+/**
+ * Start playback inside a user-gesture handler (click/tap on the ready button).
+ */
+export function unlockIntroBackgroundAudio(): void {
+  if (typeof window === "undefined") return;
+  bindInteraction();
+  void playHtmlAudio();
 }
 
 export function disposeIntroBackground(): void {
-  if (sourceNode) {
-    try {
-      sourceNode.stop();
-    } catch {
-      // already stopped
-    }
-    sourceNode = null;
+  if (htmlAudio) {
+    htmlAudio.pause();
+    htmlAudio.currentTime = 0;
   }
   isPlaying = false;
 }
@@ -174,7 +136,7 @@ export function disposeIntroBackground(): void {
 /** Inline bootstrap — preloads the audio file as early as possible in <head>. */
 export const INTRO_BACKGROUND_BOOTSTRAP = `(function(){
   var path=(window.location.pathname||"/").replace(/\\/$/,"")||"/";
-  if(path!=="/")return;
+  if(path!=="/intro"&&path!=="/")return;
   try{
     var l=document.createElement("link");
     l.rel="preload";
