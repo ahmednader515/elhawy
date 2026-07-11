@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
 import { interpolate } from "@/lib/i18n/interpolate";
+import { MAX_LEVEL } from "@/lib/gamification-shared";
 
 type Profile = {
   xp: number;
@@ -11,6 +12,7 @@ type Profile = {
   progressPercent: number;
   currentLevelXp: number;
   nextLevelXp: number;
+  maxLevel?: boolean;
   globalRank: number | null;
 };
 
@@ -27,7 +29,7 @@ export function StudentWizardProfileCard({ profile }: { profile: Profile }) {
           <p className="mt-1 text-3xl font-bold text-[var(--color-foreground)]">{profile.xp}</p>
         </div>
         <span className="wizard-level-badge">
-          {t("wizard.level", "Level")} {profile.level} · {profile.levelTitle}
+          {t("wizard.level", "Level")} {profile.level}/{MAX_LEVEL} · {profile.levelTitle}
         </span>
       </div>
 
@@ -35,10 +37,12 @@ export function StudentWizardProfileCard({ profile }: { profile: Profile }) {
         <span className="wizard-xp-bar-fill" style={{ width: `${profile.progressPercent}%` }} />
       </div>
       <p className="mt-2 text-xs text-[var(--color-muted)]">
-        {interpolate(t("wizard.xpToNext", "{current} / {next} XP to next level"), {
-          current: String(profile.xp - profile.currentLevelXp),
-          next: String(profile.nextLevelXp - profile.currentLevelXp),
-        })}
+        {profile.maxLevel
+          ? t("wizard.maxLevelReached", "You reached the highest level")
+          : interpolate(t("wizard.xpToNext", "{current} / {next} XP to next level"), {
+              current: String(profile.xp - profile.currentLevelXp),
+              next: String(profile.nextLevelXp - profile.currentLevelXp),
+            })}
       </p>
 
       <p className="mt-3 text-sm text-[var(--color-muted)]">

@@ -79,7 +79,7 @@ function LoginForm() {
   if (concurrentSession) {
     return (
       <div className="relative mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-none flex-col overflow-hidden bg-[#0a0612]">
-        <LoginBackground variant="gothic" />
+        <LoginBackground variant="gothic" performance="lite" />
         <div className="pointer-events-none absolute inset-0 z-[1] bg-[#150c26]/40" />
         <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-12">
           <div className="w-full max-w-md rounded-[var(--radius-card)] border border-amber-200 bg-amber-50/50 p-6 dark:border-amber-800 dark:bg-amber-900/20 sm:p-8">
@@ -123,7 +123,7 @@ function LoginForm() {
 
   return (
     <div className="relative mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-none flex-col overflow-hidden bg-[#0a0612]">
-      <LoginBackground variant="gothic" />
+      <LoginBackground variant="gothic" performance="lite" />
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[#150c26]/40" />
       <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-md rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] sm:p-8">
@@ -210,7 +210,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="relative mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-none flex-col overflow-hidden bg-[#0a0612]">
-        <LoginBackground variant="gothic" />
+        <LoginBackground variant="gothic" performance="lite" />
         <div className="pointer-events-none absolute inset-0 z-[1] bg-[#150c26]/40" />
         <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-12">
           <div className="w-full max-w-md rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8">

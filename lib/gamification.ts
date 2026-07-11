@@ -20,11 +20,11 @@ import {
 } from "@/lib/db";
 import {
   POINT_EVENT,
-  QUIZ_HIGH_SCORE_THRESHOLD,
   QUIZ_PASS_THRESHOLD,
   calculateLevel,
   getLevelTitle,
   getLevelTitleKey,
+  isChallengeAnswerCorrect,
   xpProgressToNextLevel,
   type GamificationAward,
   type GamificationResult,
@@ -35,7 +35,6 @@ import { getGamificationPointValues, type GamificationPointValues } from "@/lib/
 export {
   POINT_EVENT,
   QUIZ_PASS_THRESHOLD,
-  QUIZ_HIGH_SCORE_THRESHOLD,
   calculateLevel,
   getLevelTitle,
   getLevelTitleKey,
@@ -103,7 +102,7 @@ export async function markLessonComplete(
   if (already) {
     const row = await getUserGamificationRow(userId);
     const xp = row?.experiencePoints ?? 0;
-    const level = row?.wizardLevel ?? calculateLevel(xp);
+    const level = calculateLevel(xp);
     return {
       pointsAwarded: 0,
       awards: [],
@@ -119,7 +118,7 @@ export async function markLessonComplete(
   if (!inserted) {
     const row = await getUserGamificationRow(userId);
     const xp = row?.experiencePoints ?? 0;
-    const level = row?.wizardLevel ?? calculateLevel(xp);
+    const level = calculateLevel(xp);
     return {
       pointsAwarded: 0,
       awards: [],
@@ -143,25 +142,18 @@ export async function markLessonComplete(
   });
   if (lessonAward) awards.push(lessonAward);
 
-  const courseResult = await maybeAwardCourseComplete(userId, courseId, pointValues);
-  if (courseResult.award) awards.push(courseResult.award);
+  const courseCompleted = await maybeMarkCourseComplete(userId, courseId);
 
   const finalized = await finalizeAwards(userId, awards);
   return {
     ...finalized,
     awards,
-    courseComplete: courseResult.completed,
+    courseComplete: courseCompleted,
   };
 }
 
-async function maybeAwardCourseComplete(
-  userId: string,
-  courseId: string,
-  pointValues: GamificationPointValues,
-): Promise<{ completed: boolean; award: GamificationAward | null }> {
-  if (await hasCourseCompletion(userId, courseId)) {
-    return { completed: false, award: null };
-  }
+async function maybeMarkCourseComplete(userId: string, courseId: string): Promise<boolean> {
+  if (await hasCourseCompletion(userId, courseId)) return false;
 
   const [lessons, quizzes, completedLessonIds, passedQuizIds] = await Promise.all([
     getLessonsByCourseId(courseId),
@@ -172,29 +164,13 @@ async function maybeAwardCourseComplete(
 
   const lessonsTotal = lessons.length;
   const quizzesTotal = quizzes.length;
-  const lessonsDone = completedLessonIds.length;
-  const quizzesPassed = passedQuizIds.length;
+  const lessonsOk = lessonsTotal === 0 || completedLessonIds.length >= lessonsTotal;
+  const quizzesOk = quizzesTotal === 0 || passedQuizIds.length >= quizzesTotal;
 
-  const lessonsOk = lessonsTotal === 0 || lessonsDone >= lessonsTotal;
-  const quizzesOk = quizzesTotal === 0 || quizzesPassed >= quizzesTotal;
-
-  if (!lessonsOk || !quizzesOk) {
-    return { completed: false, award: null };
-  }
+  if (!lessonsOk || !quizzesOk) return false;
 
   const inserted = await insertCourseCompletionIfNotExists(userId, courseId);
-  if (!inserted) return { completed: false, award: null };
-
-  const award = await awardPoints({
-    userId,
-    eventType: POINT_EVENT.COURSE_COMPLETE,
-    referenceId: courseId,
-    courseId,
-    points: pointValues.COURSE_COMPLETE,
-    messageKey: "wizard.courseComplete",
-  });
-
-  return { completed: true, award };
+  return inserted;
 }
 
 export async function awardQuizPoints(
@@ -206,6 +182,7 @@ export async function awardQuizPoints(
 ): Promise<GamificationResult> {
   const pointValues = await getGamificationPointValues();
   const awards: GamificationAward[] = [];
+
   if (totalScored > 0) {
     const pct = score / totalScored;
     if (pct >= QUIZ_PASS_THRESHOLD) {
@@ -220,41 +197,64 @@ export async function awardQuizPoints(
       });
       if (pass) awards.push(pass);
     }
-    if (pct >= QUIZ_HIGH_SCORE_THRESHOLD) {
-      const high = await awardPoints({
-        userId,
-        eventType: POINT_EVENT.QUIZ_HIGH_SCORE,
-        referenceId: quizId,
-        courseId,
-        points: pointValues.QUIZ_HIGH_SCORE,
-        messageKey: "wizard.quizHighScore",
-        metadata: { score, totalScored, pct },
-      });
-      if (high) awards.push(high);
-    }
-    if (pct >= 1) {
-      const perfect = await awardPoints({
-        userId,
-        eventType: POINT_EVENT.QUIZ_PERFECT,
-        referenceId: quizId,
-        courseId,
-        points: pointValues.QUIZ_PERFECT,
-        messageKey: "wizard.quizPerfect",
-        metadata: { score, totalScored, pct },
-      });
-      if (perfect) awards.push(perfect);
-    }
   }
 
-  const courseResult = await maybeAwardCourseComplete(userId, courseId, pointValues);
-  if (courseResult.award) awards.push(courseResult.award);
+  const courseCompleted = await maybeMarkCourseComplete(userId, courseId);
 
   const finalized = await finalizeAwards(userId, awards);
   return {
     ...finalized,
     awards,
-    courseComplete: courseResult.completed,
+    courseComplete: courseCompleted,
   };
+}
+
+export async function awardChallengePoints(
+  userId: string,
+  challengeId: string,
+): Promise<GamificationResult> {
+  const pointValues = await getGamificationPointValues();
+  const awards: GamificationAward[] = [];
+
+  const challengeAward = await awardPoints({
+    userId,
+    eventType: POINT_EVENT.CHALLENGE_COMPLETE,
+    referenceId: challengeId,
+    points: pointValues.CHALLENGE_COMPLETE,
+    messageKey: "wizard.challengeComplete",
+  });
+  if (challengeAward) awards.push(challengeAward);
+
+  const finalized = await finalizeAwards(userId, awards);
+  return { ...finalized, awards };
+}
+
+export async function awardReferralPoints(
+  referrerUserId: string,
+  referralRequestId: string,
+): Promise<GamificationResult> {
+  const pointValues = await getGamificationPointValues();
+  const awards: GamificationAward[] = [];
+
+  const referralAward = await awardPoints({
+    userId: referrerUserId,
+    eventType: POINT_EVENT.REFERRAL_APPROVED,
+    referenceId: referralRequestId,
+    points: pointValues.REFERRAL_APPROVED,
+    messageKey: "wizard.referralApproved",
+  });
+  if (referralAward) awards.push(referralAward);
+
+  const finalized = await finalizeAwards(referrerUserId, awards);
+  return { ...finalized, awards };
+}
+
+export function gradeChallengeAnswer(
+  questionType: "MULTIPLE_CHOICE" | "TEXT",
+  submitted: string,
+  correctAnswer: string,
+): boolean {
+  return isChallengeAnswerCorrect(questionType, submitted, correctAnswer);
 }
 
 export async function getCourseProgress(userId: string, courseId: string): Promise<{
@@ -298,7 +298,7 @@ export async function getCourseProgress(userId: string, courseId: string): Promi
 export async function getStudentGamificationProfile(userId: string, locale: Locale) {
   const row = await getUserGamificationRow(userId);
   const xp = row?.experiencePoints ?? 0;
-  const level = row?.wizardLevel ?? calculateLevel(xp);
+  const level = calculateLevel(xp);
   const progress = xpProgressToNextLevel(xp);
   const globalRank = await getGlobalStudentRank(userId);
 
@@ -330,10 +330,14 @@ export async function getLeaderboard(params: {
       ? await getCourseLeaderboard(params.courseId, limit)
       : await getGlobalLeaderboard(limit);
 
-  const entries = entriesRaw.map((e) => ({
-    ...e,
-    levelTitle: getLevelTitle(e.wizardLevel, locale),
-  }));
+  const entries = entriesRaw.map((e) => {
+    const wizardLevel = calculateLevel(e.experiencePoints);
+    return {
+      ...e,
+      wizardLevel,
+      levelTitle: getLevelTitle(wizardLevel, locale),
+    };
+  });
 
   let callerRank: number | null = null;
   let callerEntry: (LeaderboardEntry & { levelTitle?: string }) | null = null;
@@ -354,13 +358,14 @@ export async function getLeaderboard(params: {
           params.scope === "course" && params.courseId
             ? await getCourseXpForUser(params.userId, params.courseId)
             : row.experiencePoints;
+        const wizardLevel = calculateLevel(row.experiencePoints);
         callerEntry = {
           userId: params.userId,
           name: row.name,
           experiencePoints: xp,
-          wizardLevel: row.wizardLevel,
+          wizardLevel,
           rank: callerRank,
-          levelTitle: getLevelTitle(row.wizardLevel, locale),
+          levelTitle: getLevelTitle(wizardLevel, locale),
         };
       }
     }

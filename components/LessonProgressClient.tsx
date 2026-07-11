@@ -1,18 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { GamificationResult } from "@/lib/gamification-shared";
+import {
+  MAX_LEVEL,
+  getLevelTitleKey,
+  type GamificationResult,
+} from "@/lib/gamification-shared";
 import { useT } from "@/components/LocaleProvider";
 import { WizardToast } from "@/components/WizardToast";
 import { notifyGamificationXpUpdated } from "@/lib/gamification-navbar";
 import { interpolate } from "@/lib/i18n/interpolate";
 
 function levelTitleKey(level: number): string {
-  if (level >= 20) return "wizard.levelTitle20";
-  if (level >= 15) return "wizard.levelTitle15";
-  if (level >= 10) return "wizard.levelTitle10";
-  if (level >= 5) return "wizard.levelTitle5";
-  return "wizard.levelTitle1";
+  return getLevelTitleKey(level);
 }
 
 export function buildGamificationToast(
@@ -34,7 +34,7 @@ export function buildGamificationToast(
     parts.push(
       interpolate(t("wizard.levelUp", "You reached level {level}: {title}"), {
         level: String(result.level),
-        title: t(levelTitleKey(result.level), ""),
+        title: t(`wizard.${levelTitleKey(result.level)}`, ""),
       }),
     );
   }

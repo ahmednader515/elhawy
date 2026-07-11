@@ -49,7 +49,7 @@ export default function RegisterPage() {
 
   return (
     <div className="relative mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-none items-center justify-center overflow-hidden bg-[#0a0612] px-4 py-12">
-      <LoginBackground variant="gothic" />
+      <LoginBackground variant="gothic" performance="lite" />
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[#150c26]/40" />
       <div className="relative z-10 w-full max-w-md rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] sm:p-8">
         <h1 className="text-2xl font-bold text-[var(--color-foreground)]">

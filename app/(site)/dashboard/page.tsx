@@ -245,6 +245,23 @@ export default async function DashboardPage() {
         <div className="grid gap-6 sm:grid-cols-2">
           <ActivateCodeSection />
           <Link
+            href="/dashboard/points-system"
+            className="wizard-points-shortcut flex flex-col items-center justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] text-center transition hover:border-[var(--color-primary)]/30"
+          >
+            <span className="wizard-points-shortcut-icon" aria-hidden>
+              🔥
+            </span>
+            <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
+              {t("dashboard.pointsSystem.cardTitle", "Points system")}
+            </h2>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              {t(
+                "dashboard.pointsSystem.cardSubtitle",
+                "Learn how to earn points and reach level 10",
+              )}
+            </p>
+          </Link>
+          <Link
             href="/dashboard/messages"
             className="flex flex-col justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] text-center transition hover:border-[var(--color-primary)]/30"
           >

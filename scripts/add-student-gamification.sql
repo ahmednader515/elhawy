@@ -62,9 +62,8 @@ CREATE TABLE IF NOT EXISTS "GamificationPointRule" (
 );
 
 INSERT INTO "GamificationPointRule" (event_type, points) VALUES
-  ('LESSON_COMPLETE', 25),
-  ('QUIZ_PASS', 40),
-  ('QUIZ_HIGH_SCORE', 20),
-  ('QUIZ_PERFECT', 30),
-  ('COURSE_COMPLETE', 150)
+  ('LESSON_COMPLETE', 5),
+  ('QUIZ_PASS', 5),
+  ('CHALLENGE_COMPLETE', 5),
+  ('REFERRAL_APPROVED', 3)
 ON CONFLICT (event_type) DO NOTHING;

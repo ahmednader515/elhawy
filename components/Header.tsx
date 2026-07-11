@@ -31,7 +31,7 @@ function UserMenu() {
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative z-[60]" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -41,7 +41,7 @@ function UserMenu() {
         <span className="text-[var(--color-muted)]">▼</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-48 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-hover)]">
+        <div className="absolute left-0 top-full z-[70] mt-1 w-48 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[var(--shadow-hover)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-muted)]">
             {roleLabel[session.user.role]}
           </div>
@@ -100,7 +100,7 @@ export function Header({
   const linkTitle = trimmedName || t("header.homePage", "Homepage");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/80">
+    <header className="site-header sticky top-0 z-[100] overflow-visible border-b border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="flex items-center justify-between gap-2 py-2 sm:hidden">
           <Link

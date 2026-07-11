@@ -14,8 +14,8 @@ import {
   HomePageBelowFold,
   HomePageBelowFoldFallback,
 } from "@/components/HomePageBelowFold";
+import { HeroSectionAnimator } from "@/components/HeroSectionAnimator";
 import { HomeHeroDecor } from "@/components/HomeHeroDecor";
-import { HomeScrollBatsLazy } from "@/components/HomeScrollBatsLazy";
 import { HomeEdgeDecor } from "@/components/HomeEdgeDecor";
 import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
@@ -101,7 +101,6 @@ export default async function HomePage() {
   return (
     <div className={`home-themed ${arefRuqaa.variable} ${elMessiri.variable}`}>
       <HomeEdgeDecor />
-      <HomeScrollBatsLazy />
       {heroTemplate === "image_slider" ? (
         <section
           className="relative w-full overflow-hidden bg-[var(--color-background)]"
@@ -125,6 +124,7 @@ export default async function HomePage() {
           className="hero-saas relative min-h-screen w-full flex items-center justify-center overflow-hidden"
           aria-label={t("home.heroAria", "Hero")}
         >
+          <HeroSectionAnimator />
           <div className="home-hero-gradient absolute inset-0 w-full h-full" />
 
           <HomeHeroDecor />
@@ -134,15 +134,6 @@ export default async function HomePage() {
             aria-hidden
             xmlns="http://www.w3.org/2000/svg"
           >
-            <defs>
-              <filter id="star-glow">
-                <feGaussianBlur stdDeviation="0.5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
             {[
               [8, 12], [18, 8], [25, 22], [12, 35], [42, 15], [55, 28], [68, 10], [75, 40], [88, 18], [92, 55],
               [5, 55], [22, 62], [38, 72], [52, 65], [62, 78], [82, 68], [15, 82], [48, 88], [72, 92], [95, 75],
@@ -155,7 +146,6 @@ export default async function HomePage() {
                 cy={`${y}%`}
                 r={i % 3 === 0 ? 1.2 : 0.8}
                 fill="rgba(255,255,255,0.35)"
-                filter="url(#star-glow)"
                 className="hero-star-dot"
                 style={{ animationDelay: `${(i * 0.13) % 5}s` }}
               />

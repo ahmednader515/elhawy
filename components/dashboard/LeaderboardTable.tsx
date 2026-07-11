@@ -2,6 +2,7 @@
 
 import { useT } from "@/components/LocaleProvider";
 import { interpolate } from "@/lib/i18n/interpolate";
+import { MAX_LEVEL } from "@/lib/gamification-shared";
 import type { LeaderboardRow } from "@/components/dashboard/GlobalLeaderboardSection";
 
 function contactPhone(row: LeaderboardRow): string | null {
@@ -43,7 +44,7 @@ function LeaderboardNameBlock({
         ) : null}
       </p>
       <p className="text-xs text-[var(--color-muted)]">
-        {t("wizard.level", "Level")} {row.wizardLevel}
+        {t("wizard.level", "Level")} {row.wizardLevel}/{MAX_LEVEL}
         {row.levelTitle ? ` · ${row.levelTitle}` : ""}
       </p>
     </div>

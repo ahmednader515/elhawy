@@ -94,6 +94,8 @@ html.dark .home-themed,
   overflow: hidden;
   pointer-events: none;
   z-index: 1;
+  isolation: isolate;
+  contain: layout style paint;
 }
 
 /* Moon wrapper — the box that represents the visible moon disc. It is pushed
@@ -107,6 +109,8 @@ html.dark .home-themed,
   width: var(--moon-size);
   height: var(--moon-size);
   animation: home-moon-float 11s ease-in-out infinite;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* The disc box is the size of the moon; the wide source image is scaled up and
@@ -115,8 +119,7 @@ html.dark .home-themed,
   position: absolute;
   inset: 0;
   overflow: hidden;
-  filter: drop-shadow(0 0 34px rgba(190, 200, 255, 0.6))
-    drop-shadow(0 0 90px rgba(130, 150, 255, 0.38));
+  filter: drop-shadow(0 0 34px rgba(190, 200, 255, 0.55));
 }
 
 .home-moon-disc img {
@@ -138,7 +141,9 @@ html.dark .home-themed,
   height: 280%;
   margin: -140% 0 0 -140%;
   pointer-events: none;
-  mix-blend-mode: screen;
+  opacity: 0.38;
+  will-change: transform, opacity;
+  transform: translateZ(0);
   background: conic-gradient(
     from 0deg,
     rgba(205, 214, 255, 0) 0deg,
@@ -168,7 +173,9 @@ html.dark .home-themed,
   height: 200%;
   margin: -100% 0 0 -100%;
   pointer-events: none;
-  mix-blend-mode: screen;
+  opacity: 0.55;
+  will-change: opacity;
+  transform: translateZ(0);
   background: radial-gradient(
     circle,
     rgba(190, 200, 255, 0.3) 0%,
@@ -265,69 +272,6 @@ html.dark .home-themed,
 }
 
 /* ============================================================
-   Scroll bats layer
-   ============================================================ */
-.home-bats {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.home-bat {
-  position: absolute;
-  left: 0;
-  will-change: transform;
-  transform-origin: center center;
-}
-
-.home-bat-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-/* Wing flap: each membrane rotates around the shoulder. */
-.bat-wing {
-  transform-box: view-box;
-  animation-duration: var(--flap, 0.32s);
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-
-.bat-wing--l {
-  transform-origin: 97px 52px;
-  animation-name: bat-wing-l;
-}
-
-.bat-wing--r {
-  transform-origin: 103px 52px;
-  animation-name: bat-wing-r;
-}
-
-@keyframes bat-wing-l {
-  0%,
-  100% {
-    transform: rotate(14deg);
-  }
-  50% {
-    transform: rotate(-30deg);
-  }
-}
-
-@keyframes bat-wing-r {
-  0%,
-  100% {
-    transform: rotate(-14deg);
-  }
-  50% {
-    transform: rotate(30deg);
-  }
-}
-
-/* ============================================================
    Edge frame decorations (web-left / web-right)
    ============================================================ */
 .home-edge {
@@ -365,7 +309,8 @@ html.dark .home-themed,
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.55));
+  contain: layout style paint;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.55);
 }
 
 /* Slight unique tilt per scroll so they feel hand-placed / worn. */
@@ -604,4 +549,22 @@ html.dark .home-themed,
   .home-moon-halo {
     animation: none;
   }
+}
+
+/* Pause heavy hero motion while the magic cursor is moving or hero is off-screen. */
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .home-moon-wrap,
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .home-moon-rays,
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .home-moon-halo,
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .hero-star-dot,
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .hero-image-frame,
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .float-icon,
+html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .hero-shooting-star,
+.hero-saas--offscreen .home-moon-wrap,
+.hero-saas--offscreen .home-moon-rays,
+.hero-saas--offscreen .home-moon-halo,
+.hero-saas--offscreen .hero-star-dot,
+.hero-saas--offscreen .hero-image-frame,
+.hero-saas--offscreen .float-icon,
+.hero-saas--offscreen .hero-shooting-star {
+  animation-play-state: paused !important;
 }

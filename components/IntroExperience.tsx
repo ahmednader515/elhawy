@@ -340,8 +340,8 @@ function IntroReadyGate({ onReady }: { onReady: () => void }) {
             <span className="intro-sign-divider-line" />
           </div>
 
-          <p className={`intro-sign-subtitle ${elMessiri.className}`}>
-            بوابة المعرفة على وشك أن تُفتح
+          <p className={`intro-sign-subtitle intro-ready-subtitle ${elMessiri.className}`}>
+            بوابة  الحاوي للمعرفة ستفتح
           </p>
         </IntroMarqueeFrame>
 

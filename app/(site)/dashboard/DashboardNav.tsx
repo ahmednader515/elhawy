@@ -66,6 +66,12 @@ export function DashboardNav({
         <NavLink href="/dashboard/leaderboard">
           {t("dashboardNav.leaderboard", "Hall of Fame")}
         </NavLink>
+        <NavLink href="/dashboard/challenges">
+          {t("dashboardNav.challenges", "Hawi challenges")}
+        </NavLink>
+        <NavLink href="/dashboard/referral">
+          {t("dashboardNav.referral", "Invite a friend")}
+        </NavLink>
         <NavLink href="/dashboard/messages">
           {t("dashboardNav.inbox", "Inbox")}
         </NavLink>
@@ -133,6 +139,12 @@ export function DashboardNav({
           </NavLink>
           <NavLink href="/dashboard/gamification/points">
             {t("dashboardNav.pointsSettings", "Points control")}
+          </NavLink>
+          <NavLink href="/dashboard/gamification/challenges">
+            {t("dashboardNav.adminChallenges", "Manage challenges")}
+          </NavLink>
+          <NavLink href="/dashboard/gamification/referrals">
+            {t("dashboardNav.adminReferrals", "Referral requests")}
           </NavLink>
         </>
       )}

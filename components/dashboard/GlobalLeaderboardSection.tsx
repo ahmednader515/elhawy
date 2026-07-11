@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
+import { MAX_LEVEL } from "@/lib/gamification-shared";
 
 export type LeaderboardRow = {
   userId: string;
@@ -51,7 +52,7 @@ export function GlobalLeaderboardSection({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-[var(--color-foreground)]">{row.name}</p>
                 <p className="text-xs text-[var(--color-muted)]">
-                  {t("wizard.level", "Level")} {row.wizardLevel}
+                  {t("wizard.level", "Level")} {row.wizardLevel}/{MAX_LEVEL}
                   {row.levelTitle ? ` · ${row.levelTitle}` : ""}
                 </p>
               </div>

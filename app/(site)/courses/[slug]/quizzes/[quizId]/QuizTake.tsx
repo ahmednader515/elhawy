@@ -7,7 +7,7 @@ import type { GamificationResult } from "@/lib/gamification-shared";
 import { useT } from "@/components/LocaleProvider";
 import { buildGamificationToast } from "@/components/LessonProgressClient";
 import { WizardToast } from "@/components/WizardToast";
-import { QUIZ_PASS_THRESHOLD, QUIZ_HIGH_SCORE_THRESHOLD } from "@/lib/gamification-shared";
+import { QUIZ_PASS_THRESHOLD, getLevelTitleKey } from "@/lib/gamification-shared";
 import { notifyGamificationXpUpdated } from "@/lib/gamification-navbar";
 
 export function QuizTake({
@@ -327,10 +327,6 @@ export function QuizTake({
             <p className="text-lg font-semibold text-[var(--color-foreground)]">
               ✦ {t("wizard.quizPerfect", "Perfect score! You mastered the spell")}
             </p>
-          ) : totalScored > 0 && score / totalScored >= QUIZ_HIGH_SCORE_THRESHOLD ? (
-            <p className="text-lg font-semibold text-[var(--color-foreground)]">
-              ✦ {t("wizard.quizHighScore", "Excellent! Your spell is powerful")}
-            </p>
           ) : totalScored > 0 && score / totalScored >= QUIZ_PASS_THRESHOLD ? (
             <p className="text-lg font-semibold text-[var(--color-foreground)]">
               ✦ {t("wizard.quizPass", "You passed the magic trial")}
@@ -354,18 +350,7 @@ export function QuizTake({
             <p className="mt-1 text-sm font-medium text-amber-500/90">
               {t("wizard.levelUp", "You reached level {level}: {title}")
                 .replace("{level}", String(gamification.level))
-                .replace("{title}", t(
-                  gamification.level >= 20
-                    ? "wizard.levelTitle20"
-                    : gamification.level >= 15
-                      ? "wizard.levelTitle15"
-                      : gamification.level >= 10
-                        ? "wizard.levelTitle10"
-                        : gamification.level >= 5
-                          ? "wizard.levelTitle5"
-                          : "wizard.levelTitle1",
-                  "",
-                ))}
+                .replace("{title}", t(`wizard.${getLevelTitleKey(gamification.level)}`, ""))}
             </p>
           ) : null}
           {gamification?.courseComplete ? (

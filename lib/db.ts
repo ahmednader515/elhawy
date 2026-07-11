@@ -24,6 +24,7 @@ import type {
   PlatformDetailsItem,
 } from "./types";
 import { generateCopyrightCodeCandidate } from "./copyright-code";
+import { calculateLevel } from "./gamification-shared";
 import {
   HOMEPAGE_DEFAULT_CTA_BADGE_AR,
   HOMEPAGE_DEFAULT_CTA_BUTTON_AR,
@@ -4956,6 +4957,56 @@ export async function ensureGamificationSchema(): Promise<void> {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "Challenge" (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          title_en TEXT,
+          description TEXT,
+          description_en TEXT,
+          question_type TEXT NOT NULL DEFAULT 'MULTIPLE_CHOICE',
+          options JSONB,
+          correct_answer TEXT NOT NULL,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_by TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "Challenge_is_active_idx" ON "Challenge"(is_active, sort_order)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "ChallengeSubmission" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          challenge_id TEXT NOT NULL REFERENCES "Challenge"(id) ON DELETE CASCADE,
+          answer TEXT NOT NULL,
+          is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+          submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT challenge_submission_unique_user_challenge UNIQUE (user_id, challenge_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "ChallengeSubmission_user_id_idx" ON "ChallengeSubmission"(user_id)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS "ReferralRequest" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          student_name TEXT NOT NULL,
+          student_mobile TEXT NOT NULL,
+          student_email TEXT NOT NULL,
+          referrer_name TEXT NOT NULL,
+          referrer_mobile TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'PENDING',
+          matched_referrer_user_id TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+          reviewed_by TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+          reviewed_at TIMESTAMPTZ,
+          admin_note TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT referral_request_unique_user UNIQUE (user_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "ReferralRequest_status_idx" ON "ReferralRequest"(status, created_at DESC)`;
+      await ensureGamificationPointRuleSeeds();
       gamificationSchemaAvailable = true;
     } catch {
       try {
@@ -4980,10 +5031,11 @@ export async function getUserGamificationRow(userId: string): Promise<{
   `;
   const r = rows[0] as { name?: string; experience_points?: number; wizard_level?: number } | undefined;
   if (!r) return null;
+  const experiencePoints = Number(r.experience_points ?? 0);
   return {
     name: String(r.name ?? ""),
-    experiencePoints: Number(r.experience_points ?? 0),
-    wizardLevel: Number(r.wizard_level ?? 1),
+    experiencePoints,
+    wizardLevel: calculateLevel(experiencePoints),
   };
 }
 
@@ -5173,38 +5225,44 @@ export async function getGlobalLeaderboard(limit: number): Promise<LeaderboardEn
     ORDER BY experience_points DESC, name ASC
     LIMIT ${limit}
   `;
-  return (rows as Record<string, unknown>[]).map((r, i) => ({
-    userId: String(r.id),
-    name: String(r.name ?? ""),
-    experiencePoints: Number(r.experience_points ?? 0),
-    wizardLevel: Number(r.wizard_level ?? 1),
-    rank: i + 1,
-    studentNumber: (r.student_number as string | null | undefined) ?? null,
-    guardianNumber: (r.guardian_number as string | null | undefined) ?? null,
-  }));
+  return (rows as Record<string, unknown>[]).map((r, i) => {
+    const experiencePoints = Number(r.experience_points ?? 0);
+    return {
+      userId: String(r.id),
+      name: String(r.name ?? ""),
+      experiencePoints,
+      wizardLevel: calculateLevel(experiencePoints),
+      rank: i + 1,
+      studentNumber: (r.student_number as string | null | undefined) ?? null,
+      guardianNumber: (r.guardian_number as string | null | undefined) ?? null,
+    };
+  });
 }
 
 export async function getCourseLeaderboard(courseId: string, limit: number): Promise<LeaderboardEntry[]> {
   await ensureGamificationSchema();
   if (!gamificationSchemaAvailable) return [];
   const rows = await sql`
-    SELECT u.id, u.name, u.wizard_level,
+    SELECT u.id, u.name, u.experience_points,
            COALESCE(SUM(pe.points), 0)::int AS course_xp
     FROM "User" u
     JOIN "PointEvent" pe ON pe.user_id = u.id AND pe.course_id = ${courseId}
     WHERE u.role = 'STUDENT'
-    GROUP BY u.id, u.name, u.wizard_level
+    GROUP BY u.id, u.name, u.experience_points
     HAVING COALESCE(SUM(pe.points), 0) > 0
     ORDER BY course_xp DESC, u.name ASC
     LIMIT ${limit}
   `;
-  return (rows as Record<string, unknown>[]).map((r, i) => ({
-    userId: String(r.id),
-    name: String(r.name ?? ""),
-    experiencePoints: Number(r.course_xp ?? 0),
-    wizardLevel: Number(r.wizard_level ?? 1),
-    rank: i + 1,
-  }));
+  return (rows as Record<string, unknown>[]).map((r, i) => {
+    const experiencePoints = Number(r.experience_points ?? 0);
+    return {
+      userId: String(r.id),
+      name: String(r.name ?? ""),
+      experiencePoints: Number(r.course_xp ?? 0),
+      wizardLevel: calculateLevel(experiencePoints),
+      rank: i + 1,
+    };
+  });
 }
 
 export async function getGlobalStudentRank(userId: string): Promise<number | null> {
@@ -5263,16 +5321,13 @@ export async function countGlobalLeaderboardStudents(): Promise<number> {
 }
 
 const GAMIFICATION_POINT_DEFAULTS: Record<string, number> = {
-  LESSON_COMPLETE: 25,
-  QUIZ_PASS: 40,
-  QUIZ_HIGH_SCORE: 20,
-  QUIZ_PERFECT: 30,
-  COURSE_COMPLETE: 150,
+  LESSON_COMPLETE: 5,
+  QUIZ_PASS: 5,
+  CHALLENGE_COMPLETE: 5,
+  REFERRAL_APPROVED: 3,
 };
 
-async function seedGamificationPointRulesIfEmpty(): Promise<void> {
-  const existing = await sql`SELECT event_type FROM "GamificationPointRule" LIMIT 1`;
-  if (existing.length > 0) return;
+async function ensureGamificationPointRuleSeeds(): Promise<void> {
   for (const [eventType, points] of Object.entries(GAMIFICATION_POINT_DEFAULTS)) {
     await sql`
       INSERT INTO "GamificationPointRule" (event_type, points, updated_at)
@@ -5280,6 +5335,15 @@ async function seedGamificationPointRulesIfEmpty(): Promise<void> {
       ON CONFLICT (event_type) DO NOTHING
     `;
   }
+}
+
+async function seedGamificationPointRulesIfEmpty(): Promise<void> {
+  const existing = await sql`SELECT event_type FROM "GamificationPointRule" LIMIT 1`;
+  if (existing.length > 0) {
+    await ensureGamificationPointRuleSeeds();
+    return;
+  }
+  await ensureGamificationPointRuleSeeds();
 }
 
 export async function getGamificationPointRules(): Promise<Record<string, number>> {
@@ -5319,4 +5383,469 @@ export async function updateGamificationPointRules(
     `;
   }
   return getGamificationPointRules();
+}
+
+// ----- Challenges & referrals -----
+
+export type ChallengeRow = {
+  id: string;
+  title: string;
+  titleEn: string | null;
+  description: string | null;
+  descriptionEn: string | null;
+  questionType: "MULTIPLE_CHOICE" | "TEXT";
+  options: string[];
+  correctAnswer: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChallengeSubmissionRow = {
+  id: string;
+  userId: string;
+  challengeId: string;
+  answer: string;
+  isCorrect: boolean;
+  submittedAt: string;
+};
+
+export type ReferralRequestRow = {
+  id: string;
+  userId: string;
+  studentName: string;
+  studentMobile: string;
+  studentEmail: string;
+  referrerName: string;
+  referrerMobile: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  matchedReferrerUserId: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  studentUserName?: string;
+  studentUserEmail?: string;
+  matchedReferrerName?: string | null;
+};
+
+function mapChallengeRow(row: Record<string, unknown>): ChallengeRow {
+  let options: string[] = [];
+  const rawOptions = row.options;
+  if (Array.isArray(rawOptions)) {
+    options = rawOptions.map(String);
+  } else if (typeof rawOptions === "string") {
+    try {
+      const parsed = JSON.parse(rawOptions) as unknown;
+      if (Array.isArray(parsed)) options = parsed.map(String);
+    } catch {
+      options = [];
+    }
+  }
+  return {
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    titleEn: row.title_en != null ? String(row.title_en) : null,
+    description: row.description != null ? String(row.description) : null,
+    descriptionEn: row.description_en != null ? String(row.description_en) : null,
+    questionType: row.question_type === "TEXT" ? "TEXT" : "MULTIPLE_CHOICE",
+    options,
+    correctAnswer: String(row.correct_answer ?? ""),
+    isActive: Boolean(row.is_active ?? true),
+    sortOrder: Number(row.sort_order ?? 0),
+    createdBy: row.created_by != null ? String(row.created_by) : null,
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+}
+
+function mapReferralRow(row: Record<string, unknown>): ReferralRequestRow {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    studentName: String(row.student_name ?? ""),
+    studentMobile: String(row.student_mobile ?? ""),
+    studentEmail: String(row.student_email ?? ""),
+    referrerName: String(row.referrer_name ?? ""),
+    referrerMobile: String(row.referrer_mobile ?? ""),
+    status: (row.status === "APPROVED" || row.status === "REJECTED" ? row.status : "PENDING") as ReferralRequestRow["status"],
+    matchedReferrerUserId: row.matched_referrer_user_id != null ? String(row.matched_referrer_user_id) : null,
+    reviewedBy: row.reviewed_by != null ? String(row.reviewed_by) : null,
+    reviewedAt: row.reviewed_at != null ? String(row.reviewed_at) : null,
+    adminNote: row.admin_note != null ? String(row.admin_note) : null,
+    createdAt: String(row.created_at ?? ""),
+    studentUserName: row.student_user_name != null ? String(row.student_user_name) : undefined,
+    studentUserEmail: row.student_user_email != null ? String(row.student_user_email) : undefined,
+    matchedReferrerName: row.matched_referrer_name != null ? String(row.matched_referrer_name) : null,
+  };
+}
+
+export async function recalculateAllWizardLevels(): Promise<number> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return 0;
+  const rows = await sql`SELECT id, experience_points FROM "User" WHERE role = 'STUDENT'`;
+  let updated = 0;
+  for (const row of rows as Array<{ id?: string; experience_points?: number }>) {
+    const userId = String(row.id ?? "");
+    if (!userId) continue;
+    const xp = Number(row.experience_points ?? 0);
+    const level = calculateLevel(xp);
+    await sql`UPDATE "User" SET wizard_level = ${level}, updated_at = NOW() WHERE id = ${userId}`;
+    updated += 1;
+  }
+  return updated;
+}
+
+export async function studentCanSubmitReferral(userId: string): Promise<boolean> {
+  const enrollments = await getEnrollmentsWithCourseByUserId(userId);
+  if (enrollments.length > 0) return true;
+  return userHasActivePlatformSubscription(userId);
+}
+
+export async function listActiveChallenges(): Promise<ChallengeRow[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = await sql`
+    SELECT * FROM "Challenge"
+    WHERE is_active = TRUE
+    ORDER BY sort_order ASC, created_at ASC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapChallengeRow);
+}
+
+export async function listAllChallenges(): Promise<ChallengeRow[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = await sql`
+    SELECT * FROM "Challenge"
+    ORDER BY sort_order ASC, created_at DESC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapChallengeRow);
+}
+
+export async function getChallengeById(id: string): Promise<ChallengeRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`SELECT * FROM "Challenge" WHERE id = ${id} LIMIT 1`;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  return row ? mapChallengeRow(row) : null;
+}
+
+export async function createChallenge(data: {
+  title: string;
+  titleEn?: string | null;
+  description?: string | null;
+  descriptionEn?: string | null;
+  questionType: "MULTIPLE_CHOICE" | "TEXT";
+  options?: string[];
+  correctAnswer: string;
+  isActive?: boolean;
+  sortOrder?: number;
+  createdBy?: string | null;
+}): Promise<ChallengeRow> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) throw new Error("GAMIFICATION_SCHEMA_UNAVAILABLE");
+  const id = generateId();
+  const optionsJson = JSON.stringify(data.options ?? []);
+  await sql`
+    INSERT INTO "Challenge" (
+      id, title, title_en, description, description_en,
+      question_type, options, correct_answer, is_active, sort_order, created_by, created_at, updated_at
+    ) VALUES (
+      ${id},
+      ${data.title.trim()},
+      ${data.titleEn?.trim() || null},
+      ${data.description?.trim() || null},
+      ${data.descriptionEn?.trim() || null},
+      ${data.questionType},
+      ${optionsJson}::jsonb,
+      ${data.correctAnswer.trim()},
+      ${data.isActive !== false},
+      ${data.sortOrder ?? 0},
+      ${data.createdBy ?? null},
+      NOW(),
+      NOW()
+    )
+  `;
+  const created = await getChallengeById(id);
+  if (!created) throw new Error("CHALLENGE_CREATE_FAILED");
+  return created;
+}
+
+export async function updateChallenge(
+  id: string,
+  data: Partial<{
+    title: string;
+    titleEn: string | null;
+    description: string | null;
+    descriptionEn: string | null;
+    questionType: "MULTIPLE_CHOICE" | "TEXT";
+    options: string[];
+    correctAnswer: string;
+    isActive: boolean;
+    sortOrder: number;
+  }>,
+): Promise<ChallengeRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const existing = await getChallengeById(id);
+  if (!existing) return null;
+
+  const title = data.title?.trim() ?? existing.title;
+  const titleEn = data.titleEn !== undefined ? data.titleEn?.trim() || null : existing.titleEn;
+  const description = data.description !== undefined ? data.description?.trim() || null : existing.description;
+  const descriptionEn = data.descriptionEn !== undefined ? data.descriptionEn?.trim() || null : existing.descriptionEn;
+  const questionType = data.questionType ?? existing.questionType;
+  const options = data.options ?? existing.options;
+  const correctAnswer = data.correctAnswer?.trim() ?? existing.correctAnswer;
+  const isActive = data.isActive ?? existing.isActive;
+  const sortOrder = data.sortOrder ?? existing.sortOrder;
+  const optionsJson = JSON.stringify(options);
+
+  await sql`
+    UPDATE "Challenge"
+    SET title = ${title},
+        title_en = ${titleEn},
+        description = ${description},
+        description_en = ${descriptionEn},
+        question_type = ${questionType},
+        options = ${optionsJson}::jsonb,
+        correct_answer = ${correctAnswer},
+        is_active = ${isActive},
+        sort_order = ${sortOrder},
+        updated_at = NOW()
+    WHERE id = ${id}
+  `;
+  return getChallengeById(id);
+}
+
+export async function deleteChallenge(id: string): Promise<boolean> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return false;
+  const rows = await sql`DELETE FROM "Challenge" WHERE id = ${id} RETURNING id`;
+  return rows.length > 0;
+}
+
+export async function getChallengeSubmission(
+  userId: string,
+  challengeId: string,
+): Promise<ChallengeSubmissionRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`
+    SELECT * FROM "ChallengeSubmission"
+    WHERE user_id = ${userId} AND challenge_id = ${challengeId}
+    LIMIT 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    challengeId: String(row.challenge_id),
+    answer: String(row.answer ?? ""),
+    isCorrect: Boolean(row.is_correct),
+    submittedAt: String(row.submitted_at ?? ""),
+  };
+}
+
+export async function listChallengeSubmissionsForUser(userId: string): Promise<ChallengeSubmissionRow[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = await sql`
+    SELECT * FROM "ChallengeSubmission" WHERE user_id = ${userId}
+  `;
+  return (rows as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    userId: String(row.user_id),
+    challengeId: String(row.challenge_id),
+    answer: String(row.answer ?? ""),
+    isCorrect: Boolean(row.is_correct),
+    submittedAt: String(row.submitted_at ?? ""),
+  }));
+}
+
+export async function insertChallengeSubmission(data: {
+  userId: string;
+  challengeId: string;
+  answer: string;
+  isCorrect: boolean;
+}): Promise<ChallengeSubmissionRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const id = generateId();
+  try {
+    const rows = await sql`
+      INSERT INTO "ChallengeSubmission" (id, user_id, challenge_id, answer, is_correct, submitted_at)
+      VALUES (${id}, ${data.userId}, ${data.challengeId}, ${data.answer}, ${data.isCorrect}, NOW())
+      ON CONFLICT (user_id, challenge_id) DO NOTHING
+      RETURNING *
+    `;
+    const row = rows[0] as Record<string, unknown> | undefined;
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      userId: String(row.user_id),
+      challengeId: String(row.challenge_id),
+      answer: String(row.answer ?? ""),
+      isCorrect: Boolean(row.is_correct),
+      submittedAt: String(row.submitted_at ?? ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getReferralRequestByUserId(userId: string): Promise<ReferralRequestRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`
+    SELECT r.*, u.name AS student_user_name, u.email AS student_user_email,
+           ref.name AS matched_referrer_name
+    FROM "ReferralRequest" r
+    JOIN "User" u ON u.id = r.user_id
+    LEFT JOIN "User" ref ON ref.id = r.matched_referrer_user_id
+    WHERE r.user_id = ${userId}
+    LIMIT 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  return row ? mapReferralRow(row) : null;
+}
+
+export async function getReferralRequestById(id: string): Promise<ReferralRequestRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const rows = await sql`
+    SELECT r.*, u.name AS student_user_name, u.email AS student_user_email,
+           ref.name AS matched_referrer_name
+    FROM "ReferralRequest" r
+    JOIN "User" u ON u.id = r.user_id
+    LEFT JOIN "User" ref ON ref.id = r.matched_referrer_user_id
+    WHERE r.id = ${id}
+    LIMIT 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  return row ? mapReferralRow(row) : null;
+}
+
+export async function createReferralRequest(data: {
+  userId: string;
+  studentName: string;
+  studentMobile: string;
+  studentEmail: string;
+  referrerName: string;
+  referrerMobile: string;
+}): Promise<ReferralRequestRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const id = generateId();
+  try {
+    await sql`
+      INSERT INTO "ReferralRequest" (
+        id, user_id, student_name, student_mobile, student_email,
+        referrer_name, referrer_mobile, status, created_at
+      ) VALUES (
+        ${id},
+        ${data.userId},
+        ${data.studentName.trim()},
+        ${data.studentMobile.trim()},
+        ${data.studentEmail.trim()},
+        ${data.referrerName.trim()},
+        ${data.referrerMobile.trim()},
+        'PENDING',
+        NOW()
+      )
+    `;
+    return getReferralRequestById(id);
+  } catch {
+    return null;
+  }
+}
+
+export async function listReferralRequests(status?: "PENDING" | "APPROVED" | "REJECTED"): Promise<ReferralRequestRow[]> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return [];
+  const rows = status
+    ? await sql`
+        SELECT r.*, u.name AS student_user_name, u.email AS student_user_email,
+               ref.name AS matched_referrer_name
+        FROM "ReferralRequest" r
+        JOIN "User" u ON u.id = r.user_id
+        LEFT JOIN "User" ref ON ref.id = r.matched_referrer_user_id
+        WHERE r.status = ${status}
+        ORDER BY r.created_at DESC
+      `
+    : await sql`
+        SELECT r.*, u.name AS student_user_name, u.email AS student_user_email,
+               ref.name AS matched_referrer_name
+        FROM "ReferralRequest" r
+        JOIN "User" u ON u.id = r.user_id
+        LEFT JOIN "User" ref ON ref.id = r.matched_referrer_user_id
+        ORDER BY r.created_at DESC
+      `;
+  return (rows as Record<string, unknown>[]).map(mapReferralRow);
+}
+
+export async function approveReferralRequest(data: {
+  id: string;
+  referrerUserId: string;
+  reviewedBy: string;
+  adminNote?: string | null;
+}): Promise<ReferralRequestRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const existing = await getReferralRequestById(data.id);
+  if (!existing || existing.status !== "PENDING") return null;
+
+  await sql`
+    UPDATE "ReferralRequest"
+    SET status = 'APPROVED',
+        matched_referrer_user_id = ${data.referrerUserId},
+        reviewed_by = ${data.reviewedBy},
+        reviewed_at = NOW(),
+        admin_note = ${data.adminNote?.trim() || null}
+    WHERE id = ${data.id} AND status = 'PENDING'
+  `;
+  return getReferralRequestById(data.id);
+}
+
+export async function rejectReferralRequest(data: {
+  id: string;
+  reviewedBy: string;
+  adminNote?: string | null;
+}): Promise<ReferralRequestRow | null> {
+  await ensureGamificationSchema();
+  if (!gamificationSchemaAvailable) return null;
+  const existing = await getReferralRequestById(data.id);
+  if (!existing || existing.status !== "PENDING") return null;
+
+  await sql`
+    UPDATE "ReferralRequest"
+    SET status = 'REJECTED',
+        reviewed_by = ${data.reviewedBy},
+        reviewed_at = NOW(),
+        admin_note = ${data.adminNote?.trim() || null}
+    WHERE id = ${data.id} AND status = 'PENDING'
+  `;
+  return getReferralRequestById(data.id);
+}
+
+export async function searchStudentsForReferral(query: string, limit = 10): Promise<Array<{ id: string; name: string; email: string }>> {
+  const q = query.trim();
+  if (!q) return [];
+  const pattern = `%${q}%`;
+  const rows = await sql`
+    SELECT id, name, email FROM "User"
+    WHERE role = 'STUDENT'
+      AND (name ILIKE ${pattern} OR email ILIKE ${pattern})
+    ORDER BY name ASC
+    LIMIT ${limit}
+  `;
+  return (rows as Array<{ id?: string; name?: string; email?: string }>).map((row) => ({
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    email: String(row.email ?? ""),
+  }));
 }

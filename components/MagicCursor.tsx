@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import "./magic-cursor.css";
 
 const GLITTER_COLORS = [
@@ -12,14 +13,21 @@ const GLITTER_COLORS = [
   "#f9a8d4",
 ];
 
-const SPAWN_DISTANCE = 14;
-const MAX_GLITTER = 36;
-const GLITTER_THROTTLE_MS = 48;
+const SPAWN_DISTANCE = 18;
+const MAX_GLITTER = 24;
+const GLITTER_THROTTLE_MS = 64;
+const INTERACTION_IDLE_MS = 180;
+const AUTH_PATH_PREFIXES = ["/login", "/register"];
 // Star tip offset within the 44x44 wand SVG (the cursor "hotspot").
 const TIP_X = 11;
 const TIP_Y = 10;
 
+function isAuthPath(pathname: string) {
+  return AUTH_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 export function MagicCursor() {
+  const pathname = usePathname();
   const wandRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: -100, y: -100 });
@@ -27,8 +35,9 @@ export function MagicCursor() {
   const visibleRef = useRef(false);
   const countRef = useRef(0);
   const activeRef = useRef(true);
-  const wandRafRef = useRef(0);
   const lastGlitterAt = useRef(0);
+  const interactionTimerRef = useRef(0);
+  const authLiteRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -37,20 +46,27 @@ export function MagicCursor() {
 
     const root = document.documentElement;
     root.classList.add("magic-cursor-active");
+    const authLite = isAuthPath(pathname);
+    authLiteRef.current = authLite;
+    root.classList.toggle("magic-cursor-auth-lite", authLite);
 
-    const scheduleWandMove = () => {
-      if (wandRafRef.current) return;
-      wandRafRef.current = window.requestAnimationFrame(() => {
-        wandRafRef.current = 0;
-        if (!wandRef.current || !visibleRef.current) return;
-        wandRef.current.style.transform = `translate3d(${
-          pos.current.x - TIP_X
-        }px, ${pos.current.y - TIP_Y}px, 0)`;
-      });
+    const markInteraction = () => {
+      root.classList.add("magic-cursor-interacting");
+      window.clearTimeout(interactionTimerRef.current);
+      interactionTimerRef.current = window.setTimeout(() => {
+        root.classList.remove("magic-cursor-interacting");
+      }, INTERACTION_IDLE_MS);
+    };
+
+    const applyWandPosition = (x: number, y: number) => {
+      if (!wandRef.current) return;
+      wandRef.current.style.transform = `translate3d(${x - TIP_X}px, ${y - TIP_Y}px, 0)`;
     };
 
     const spawnGlitter = (x: number, y: number, burst = false) => {
       if (!activeRef.current) return;
+      if (authLiteRef.current && !burst) return;
+      if (window.location.pathname.startsWith("/intro") && !burst) return;
 
       const layer = layerRef.current;
       if (!layer || countRef.current >= MAX_GLITTER) return;
@@ -89,13 +105,13 @@ export function MagicCursor() {
 
       pos.current.x = e.clientX;
       pos.current.y = e.clientY;
+      markInteraction();
+      applyWandPosition(e.clientX, e.clientY);
 
       if (!visibleRef.current) {
         visibleRef.current = true;
         if (wandRef.current) wandRef.current.style.opacity = "1";
       }
-
-      scheduleWandMove();
 
       const dx = e.clientX - last.current.x;
       const dy = e.clientY - last.current.y;
@@ -159,7 +175,9 @@ export function MagicCursor() {
     window.addEventListener("blur", hide);
 
     return () => {
-      if (wandRafRef.current) window.cancelAnimationFrame(wandRafRef.current);
+      window.clearTimeout(interactionTimerRef.current);
+      root.classList.remove("magic-cursor-auth-lite");
+      root.classList.remove("magic-cursor-interacting");
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("fullscreenchange", syncFullscreenCursor);
       document.removeEventListener("webkitfullscreenchange", syncFullscreenCursor);
@@ -170,13 +188,13 @@ export function MagicCursor() {
       window.removeEventListener("blur", hide);
       root.classList.remove("magic-cursor-active");
     };
-  }, []);
+  }, [pathname]);
 
   return (
     <div className="magic-cursor-root" aria-hidden>
       <div ref={layerRef} className="magic-glitter-layer" />
       <div ref={wandRef} className="magic-wand" style={{ opacity: 0 }}>
-        <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden>
           <defs>
             <linearGradient id="magicWandStick" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#d9b876" />
@@ -189,6 +207,7 @@ export function MagicCursor() {
               <stop offset="1" stopColor="#f59e0b" />
             </radialGradient>
           </defs>
+          <g className="magic-wand-body">
           <line
             x1="15"
             y1="15"
@@ -212,6 +231,7 @@ export function MagicCursor() {
             d="M11 1.5 L13.3 8 L20 8.4 L14.6 12.4 L16.5 19 L11 15.1 L5.5 19 L7.4 12.4 L2 8.4 L8.7 8 Z"
             fill="url(#magicWandStar)"
           />
+          </g>
         </svg>
       </div>
     </div>

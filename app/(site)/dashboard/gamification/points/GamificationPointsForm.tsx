@@ -25,19 +25,14 @@ const RULE_META: Array<{
     descKey: "quizPassDesc",
   },
   {
-    key: "QUIZ_HIGH_SCORE",
-    labelKey: "quizHighScore",
-    descKey: "quizHighScoreDesc",
+    key: "CHALLENGE_COMPLETE",
+    labelKey: "challengeComplete",
+    descKey: "challengeCompleteDesc",
   },
   {
-    key: "QUIZ_PERFECT",
-    labelKey: "quizPerfect",
-    descKey: "quizPerfectDesc",
-  },
-  {
-    key: "COURSE_COMPLETE",
-    labelKey: "courseComplete",
-    descKey: "courseCompleteDesc",
+    key: "REFERRAL_APPROVED",
+    labelKey: "referralApproved",
+    descKey: "referralApprovedDesc",
   },
 ];
 
@@ -120,7 +115,7 @@ export function GamificationPointsForm({ initialValues }: { initialValues: Gamif
                       [rule.key]: Number(e.target.value),
                     }))
                   }
-                  className="w-28 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-center text-sm font-semibold tabular-nums"
+                  className="w-24 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm"
                 />
                 <span className="text-sm text-[var(--color-muted)]">{t("wizard.points", "Magic points")}</span>
               </div>
@@ -129,14 +124,12 @@ export function GamificationPointsForm({ initialValues }: { initialValues: Gamif
         </ul>
       </div>
 
-      <p className="text-xs text-[var(--color-muted)]">{t(`${Gp}.saveNote`)}</p>
-
       <button
         type="submit"
         disabled={saving}
-        className="rounded-[var(--radius-btn)] bg-[var(--color-primary)] px-6 py-2 font-medium text-white transition hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
+        className="rounded-[var(--radius-btn)] bg-[var(--color-primary)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50"
       >
-        {saving ? t(`${Gp}.saving`) : t(`${Gp}.saveIdle`)}
+        {saving ? t("common.saving", "Saving...") : t("common.save", "Save")}
       </button>
     </form>
   );

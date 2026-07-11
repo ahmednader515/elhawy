@@ -30,6 +30,8 @@ html.magic-cursor-active summary {
   z-index: 2147483647;
   pointer-events: none;
   overflow: hidden;
+  transform: translateZ(0);
+  contain: strict;
 }
 
 .magic-glitter-layer {
@@ -37,6 +39,7 @@ html.magic-cursor-active summary {
   inset: 0;
   pointer-events: none;
   contain: strict;
+  transform: translateZ(0);
 }
 
 .magic-wand {
@@ -46,9 +49,21 @@ html.magic-cursor-active summary {
   width: 44px;
   height: 44px;
   will-change: transform;
+  transform: translate3d(0, 0, 0);
   transition: opacity 0.2s ease;
-  filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.7))
-    drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+  filter: drop-shadow(0 0 3px rgba(192, 132, 252, 0.65));
+}
+
+html.magic-cursor-auth-lite .magic-wand {
+  filter: none;
+}
+
+html.magic-cursor-auth-lite .magic-wand-star {
+  animation: none;
+}
+
+html.magic-cursor-auth-lite.magic-cursor-interacting .magic-wand-star {
+  animation: none;
 }
 
 .magic-wand-star {
@@ -100,4 +115,9 @@ html.magic-cursor-active summary {
   .magic-wand-star {
     animation: none;
   }
+}
+
+.site-header {
+  overflow: visible;
+  isolation: isolate;
 }
