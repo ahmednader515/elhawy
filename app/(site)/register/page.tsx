@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import LoginBackground from "@/app/(site)/login/LoginBackground";
 import { useT } from "@/components/LocaleProvider";
+
+const LoginBackground = dynamic(() => import("@/app/(site)/login/LoginBackground"), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 -z-10 bg-black" aria-hidden />,
+});
 
 export default function RegisterPage() {
   const t = useT();

@@ -16,7 +16,8 @@ import {
   parsePlatformDetailsItems,
 } from "@/lib/platform-details";
 import { parsePlatformNewsItems, PLATFORM_NEWS_MAX_ITEMS } from "@/lib/platform-news";
-import { useT } from "@/components/LocaleProvider";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import { useLocale, useT } from "@/components/LocaleProvider";
 import { fillMessage } from "@/lib/i18n/interpolate";
 
 const HERO_BG_PRESET_IDS: HeroBgPreset[] = [
@@ -114,6 +115,7 @@ export function HomepageSettingsForm({
 }) {
   const router = useRouter();
   const t = useT();
+  const locale = useLocale();
   const Hp = "dashboard.homepageSettingsForm";
   const fh = (key: string) => t(`${Hp}.${key}`);
   const [saving, setSaving] = useState(false);
@@ -829,7 +831,7 @@ export function HomepageSettingsForm({
                     <option value="">{fh("noCourseLink")}</option>
                     {publishedCourses.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {(c.titleAr ?? c.title).trim() || c.slug}
+                        {pickLocalizedText(locale, c.titleAr, c.title).trim() || c.slug}
                       </option>
                     ))}
                   </select>

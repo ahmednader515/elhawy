@@ -1,6 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Suspense } from "react";
-import { unstable_noStore } from "next/cache";
 import { preload } from "react-dom";
 import { Aref_Ruqaa_Ink, El_Messiri } from "next/font/google";
 import { getServerSession } from "next-auth";
@@ -22,7 +22,7 @@ import { pickLocalizedText } from "@/lib/i18n/localized-field";
 import "@/components/home-theme.css";
 
 const arefRuqaa = Aref_Ruqaa_Ink({
-  subsets: ["arabic"],
+  subsets: ["arabic", "latin"],
   weight: ["400", "700"],
   variable: "--font-aref",
   display: "swap",
@@ -35,12 +35,10 @@ const elMessiri = El_Messiri({
   display: "swap",
 });
 
-/** عدم تخزين الصفحة مؤقتاً — الكورسات الجديدة والمحذوفة تظهر فوراً */
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+/** إعدادات/كورسات عامة مخزّنة ٦٠ث — بيانات الجلسة تبقى ديناميكية */
+export const revalidate = 60;
 
 export default async function HomePage() {
-  unstable_noStore();
   const [t, locale] = await Promise.all([getServerTranslator(), getLocaleFromCookie()]);
 
   const [session, homepageSettings] = await Promise.all([

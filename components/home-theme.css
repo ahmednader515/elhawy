@@ -31,10 +31,12 @@ html.dark .home-themed,
   font-family: var(--font-elmessiri), var(--font-sans);
 }
 
-/* Display font (Aref Ruqaa) — major section titles only, not card headings. */
+/* Display font (Aref Ruqaa Ink) — major section titles only, not card headings.
+   Ink colors Arabic glyphs; Latin falls back to CSS `color`, so keep it red to match. */
 .home-themed h1,
 .home-themed section h2 {
   font-family: var(--font-aref), var(--font-elmessiri), serif;
+  color: #e53935;
   line-height: 1.2;
 }
 
@@ -73,11 +75,11 @@ html.dark .home-themed,
 }
 
 .home-hero-title {
-  color: #f6efff;
+  color: #e53935;
   font-size: clamp(2.75rem, 6.5vw, 4.75rem);
   text-shadow:
-    0 0 18px rgba(168, 85, 247, 0.55),
-    0 0 44px rgba(124, 58, 237, 0.35);
+    0 0 18px rgba(229, 57, 53, 0.55),
+    0 0 44px rgba(183, 28, 28, 0.35);
 }
 
 .home-hero-slogan {

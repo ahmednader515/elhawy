@@ -152,6 +152,13 @@ export function ChallengesAdminClient() {
           rows={3}
           className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] px-3 py-2 text-sm"
         />
+        <textarea
+          value={form.descriptionEn}
+          onChange={(e) => setForm((f) => ({ ...f, descriptionEn: e.target.value }))}
+          placeholder={t(`${C}.descriptionEn`, "Description (English)")}
+          rows={3}
+          className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] px-3 py-2 text-sm"
+        />
         <select
           value={form.questionType}
           onChange={(e) =>

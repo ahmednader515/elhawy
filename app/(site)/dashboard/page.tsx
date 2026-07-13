@@ -7,7 +7,6 @@ import {
   getAccessibleCoursesForUser,
   countUsersByRole,
   countCourses,
-  getAllQuizAttemptsForAdmin,
   getTotalPlatformEarnings,
   getCoursesWithCountsForCreator,
   getSubscriptionsFeatureEnabled,
@@ -15,9 +14,10 @@ import {
   listStudentStorePurchases,
   userHasActivePlatformSubscription,
   getLatestPlatformSubscriptionExpiry,
+  getCourseProgressPercentsForUser,
 } from "@/lib/db";
 import { getServerTranslator, getLocaleFromCookie } from "@/lib/i18n/server";
-import { getStudentGamificationProfile, getLeaderboard, getCourseProgress } from "@/lib/gamification";
+import { getStudentGamificationProfile, getLeaderboard } from "@/lib/gamification";
 import { StudentWizardProfileCard } from "@/components/dashboard/StudentWizardProfileCard";
 import { GlobalLeaderboardSection } from "@/components/dashboard/GlobalLeaderboardSection";
 import { MyCoursesSection } from "./MyCoursesSection";
@@ -174,13 +174,10 @@ export default async function DashboardPage() {
     }
 
     const locale = await getLocaleFromCookie();
-    const progressEntries = await Promise.all(
-      enrolledCourses.map(async (c) => {
-        const progress = await getCourseProgress(session.user.id, c.id);
-        return [c.id, progress.percent] as const;
-      }),
+    const progressByCourseId = await getCourseProgressPercentsForUser(
+      session.user.id,
+      enrolledCourses.map((c) => c.id),
     );
-    const progressByCourseId = Object.fromEntries(progressEntries);
 
     const [wizardProfile, leaderboard] = await Promise.all([
       getStudentGamificationProfile(session.user.id, locale),
@@ -274,8 +271,25 @@ export default async function DashboardPage() {
                 "Messages and conversations from admin or your teacher",
               )}
             </p>
-            <span className="mt-4 inline-flex w-fit rounded-[var(--radius-btn)] bg-[var(--color-primary)] px-5 py-2.5 text-base font-medium text-white transition hover:bg-[var(--color-primary-hover)]">
+            <span className="mt-4 inline-flex w-fit self-center rounded-[var(--radius-btn)] bg-[var(--color-primary)] px-5 py-2.5 text-base font-medium text-white transition hover:bg-[var(--color-primary-hover)]">
               {t("dashboard.page.openMessagesButton", "Open messages")}
+            </span>
+          </Link>
+          <Link
+            href="/dashboard/elhawy-world"
+            className="flex flex-col justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] text-center transition hover:border-[var(--color-primary)]/30"
+          >
+            <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
+              {t("dashboard.page.elhawyWorldCardTitle", "Elhawy World")}
+            </h2>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              {t(
+                "dashboard.page.elhawyWorldCardStudentDesc",
+                "Watch exclusive Shorts from Elhawy World",
+              )}
+            </p>
+            <span className="mt-4 inline-flex w-fit self-center rounded-[var(--radius-btn)] bg-[var(--color-primary)] px-5 py-2.5 text-base font-medium text-white transition hover:bg-[var(--color-primary-hover)]">
+              {t("dashboard.page.openElhawyWorldButton", "Open Elhawy World")}
             </span>
           </Link>
         </div>
@@ -341,14 +355,11 @@ export default async function DashboardPage() {
     );
   }
 
-  const [studentsCount, coursesCount, _quizAttempts, totalEarnings] = await Promise.all([
+  const [studentsCount, coursesCount, totalEarnings] = await Promise.all([
     countUsersByRole("STUDENT"),
     countCourses(),
-    getAllQuizAttemptsForAdmin().catch(() => []),
     getTotalPlatformEarnings(),
   ]);
-
-  void _quizAttempts;
 
   return (
     <div className="space-y-8">
@@ -680,6 +691,20 @@ export default async function DashboardPage() {
                   {t(
                     "dashboard.page.platformStoreCardDesc",
                     "Enable or disable the platform store section and add digital products such as handouts and PDF books (name, description, price, image, PDF file).",
+                  )}
+                </p>
+              </Link>
+              <Link
+                href="/dashboard/elhawy-world/manage"
+                className="flex min-h-[200px] flex-col justify-center rounded-[var(--radius-card)] border border-[var(--color-primary)]/25 bg-[var(--color-background)] p-6 text-center transition hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-card)]"
+              >
+                <h3 className="font-semibold text-[var(--color-foreground)]">
+                  {t("dashboard.page.elhawyWorldCardTitle", "Elhawy World")}
+                </h3>
+                <p className="mt-2 text-sm text-[var(--color-muted)]">
+                  {t(
+                    "dashboard.page.elhawyWorldCardDesc",
+                    "Add and manage YouTube videos for the student Elhawy World page (titles, descriptions, cover images, publish status).",
                   )}
                 </p>
               </Link>

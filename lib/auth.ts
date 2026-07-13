@@ -60,11 +60,37 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: UserRole }).role;
         token.sessionId = (user as { sessionId?: string }).sessionId;
+        token.lastSessionCheck = Date.now();
+        token.sessionMismatch = false;
+        return token;
+      }
+
+      // Throttle concurrent-session DB checks (was every session read / 5s client poll)
+      const SESSION_CHECK_MS = 60_000;
+      const now = Date.now();
+      const lastCheck = typeof token.lastSessionCheck === "number" ? token.lastSessionCheck : 0;
+      const shouldCheck =
+        Boolean(token.id && token.sessionId) &&
+        (trigger === "update" || now - lastCheck >= SESSION_CHECK_MS);
+
+      if (shouldCheck) {
+        token.lastSessionCheck = now;
+        try {
+          const { getCurrentSessionId: getSessionId } = await import("@/lib/db");
+          const dbSessionId = await getSessionId(token.id as string);
+          const sessionMismatch =
+            !dbSessionId ||
+            dbSessionId.trim() === "" ||
+            dbSessionId !== (token.sessionId as string);
+          token.sessionMismatch = sessionMismatch;
+        } catch (err) {
+          console.error("NextAuth jwt session check:", err);
+        }
       }
       return token;
     },
@@ -72,16 +98,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string;
         (session.user as { role?: UserRole }).role = token.role as UserRole;
-        try {
-          const { getCurrentSessionId: getSessionId } = await import("@/lib/db");
-          const dbSessionId = await getSessionId((session.user as { id: string }).id);
-          const sessionMismatch =
-            !dbSessionId || dbSessionId.trim() === "" || dbSessionId !== token.sessionId;
-          if (token.sessionId && sessionMismatch) {
-            (session as { forceLogout?: boolean }).forceLogout = true;
-          }
-        } catch (err) {
-          console.error("NextAuth session callback:", err);
+        if (token.sessionMismatch) {
+          (session as { forceLogout?: boolean }).forceLogout = true;
         }
       }
       return session;

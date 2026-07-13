@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { useDashboardTable, dateLocaleForUi } from "@/lib/i18n/dashboard-table";
 import { fillMessage } from "@/lib/i18n/interpolate";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
 import type { Locale } from "@/lib/i18n/types";
 
 type Attempt = {
@@ -220,7 +221,7 @@ export default function StatisticsContent({
                 {enrollments.length > 0 && (
                   <p className="mt-2 text-sm text-[var(--color-foreground)]">
                     {t(`${pq}.coursesLabel`, "Courses:")}{" "}
-                    {enrollments.map((e) => e.course.titleAr ?? e.course.title).join(locale === "ar" ? "، " : ", ")}
+                    {enrollments.map((e) => pickLocalizedText(locale, e.course.titleAr, e.course.title)).join(locale === "ar" ? "، " : ", ")}
                   </p>
                 )}
                 {userAttempts.length > 0 && (

@@ -1,13 +1,10 @@
-import { unstable_noStore } from "next/cache";
 import { getCoursesPublished, getTeacherIdsExcludedFromPublicCourseLists, getUserById } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { TeacherCoursesSearch, type TeacherCourseListItem } from "./TeacherCoursesSearch";
 import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 import { pickLocalizedText } from "@/lib/i18n/localized-field";
 
-/** عدم تخزين الصفحة مؤقتاً — الكورسات الجديدة والمحذوفة تظهر فوراً */
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60;
 
 export async function generateMetadata() {
   const t = await getServerTranslator();
@@ -20,7 +17,6 @@ export async function generateMetadata() {
 type Props = { searchParams: Promise<{ category?: string; teacher?: string }> };
 
 export default async function CoursesPage({ searchParams }: Props) {
-  unstable_noStore();
   const [t, locale] = await Promise.all([getServerTranslator(), getLocaleFromCookie()]);
   const { category: categorySlug, teacher: teacherId } = await searchParams;
   let courses: Awaited<ReturnType<typeof getCoursesPublished>> = [];

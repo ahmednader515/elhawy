@@ -3,9 +3,11 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
 import { useDashboardTable } from "@/lib/i18n/dashboard-table";
 import { fillMessage } from "@/lib/i18n/interpolate";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import type { Locale } from "@/lib/i18n/types";
 
 type CourseRow = {
   id: string;
@@ -27,6 +29,7 @@ function CourseTableRow({
   onDelete,
   t,
   egp,
+  locale,
 }: {
   c: CourseRow;
   deletingId: string | null;
@@ -34,6 +37,7 @@ function CourseTableRow({
   onDelete: (id: string) => void;
   t: (k: string, fb?: string) => string;
   egp: string;
+  locale: Locale;
 }) {
   const L = "dashboard.coursesList";
   return (
@@ -44,7 +48,7 @@ function CourseTableRow({
             <img src={c.imageUrl} alt="" className="h-12 w-20 rounded object-cover" />
           )}
           <span className="font-medium text-[var(--color-foreground)]">
-            {c.titleAr ?? c.title}
+            {pickLocalizedText(locale, c.titleAr, c.title)}
           </span>
         </div>
       </td>
@@ -97,6 +101,7 @@ function CourseTableRow({
 export function CoursesManageList({ courses }: { courses: CourseRow[] }) {
   const router = useRouter();
   const t = useT();
+  const locale = useLocale();
   const L = "dashboard.coursesList";
   const { dir, thClass } = useDashboardTable();
   const egp = t("common.egyptianPoundShort");
@@ -123,7 +128,9 @@ export function CoursesManageList({ courses }: { courses: CourseRow[] }) {
       if (!map.has(key)) {
         order.push(key);
         map.set(key, {
-          title: c.category ? (c.category.nameAr ?? c.category.name) : t(`${L}.uncategorized`),
+          title: c.category
+            ? pickLocalizedText(locale, c.category.nameAr, c.category.name)
+            : t(`${L}.uncategorized`),
           courses: [],
         });
       }
@@ -134,7 +141,7 @@ export function CoursesManageList({ courses }: { courses: CourseRow[] }) {
       title: map.get(key)!.title,
       courses: map.get(key)!.courses,
     }));
-  }, [filteredCourses, t]);
+  }, [filteredCourses, t, locale]);
 
   async function handleDelete(id: string) {
     if (confirmDelete !== id) {
@@ -226,6 +233,7 @@ export function CoursesManageList({ courses }: { courses: CourseRow[] }) {
                       onDelete={handleDelete}
                       t={t}
                       egp={egp}
+                      locale={locale}
                     />
                   ))}
                 </tbody>

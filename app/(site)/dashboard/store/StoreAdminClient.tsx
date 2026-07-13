@@ -40,6 +40,8 @@ export function StoreAdminClient({
   initialEnabled,
   initialHomeStoreTitle,
   initialHomeStoreDescription,
+  initialHomeStoreTitleEn,
+  initialHomeStoreDescriptionEn,
   initialProducts,
   initialPurchases,
   initialStats,
@@ -47,6 +49,8 @@ export function StoreAdminClient({
   initialEnabled: boolean;
   initialHomeStoreTitle: string;
   initialHomeStoreDescription: string;
+  initialHomeStoreTitleEn: string;
+  initialHomeStoreDescriptionEn: string;
   initialProducts: StoreProduct[];
   initialPurchases: AdminPurchaseRow[];
   initialStats: SalesStats;
@@ -83,12 +87,21 @@ export function StoreAdminClient({
   const [editImageError, setEditImageError] = useState("");
   const [homeStoreTitle, setHomeStoreTitle] = useState(initialHomeStoreTitle);
   const [homeStoreDescription, setHomeStoreDescription] = useState(initialHomeStoreDescription);
+  const [homeStoreTitleEn, setHomeStoreTitleEn] = useState(initialHomeStoreTitleEn);
+  const [homeStoreDescriptionEn, setHomeStoreDescriptionEn] = useState(initialHomeStoreDescriptionEn);
   const [homeCopySaving, setHomeCopySaving] = useState(false);
 
   useEffect(() => {
     setHomeStoreTitle(initialHomeStoreTitle);
     setHomeStoreDescription(initialHomeStoreDescription);
-  }, [initialHomeStoreTitle, initialHomeStoreDescription]);
+    setHomeStoreTitleEn(initialHomeStoreTitleEn);
+    setHomeStoreDescriptionEn(initialHomeStoreDescriptionEn);
+  }, [
+    initialHomeStoreTitle,
+    initialHomeStoreDescription,
+    initialHomeStoreTitleEn,
+    initialHomeStoreDescriptionEn,
+  ]);
 
   const reload = useCallback(async () => {
     const res = await fetch("/api/dashboard/store-products", { credentials: "include" });
@@ -139,6 +152,8 @@ export function StoreAdminClient({
       body: JSON.stringify({
         title: trimmedHomeTitle,
         description: homeStoreDescription.trim(),
+        titleEn: homeStoreTitleEn.trim(),
+        descriptionEn: homeStoreDescriptionEn.trim(),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -354,10 +369,23 @@ export function StoreAdminClient({
             placeholder={t(`${S}.homeTitlePlaceholder`)}
             className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
           />
+          <input
+            value={homeStoreTitleEn}
+            onChange={(e) => setHomeStoreTitleEn(e.target.value)}
+            placeholder={t(`${S}.homeTitlePlaceholderEn`)}
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          />
           <textarea
             value={homeStoreDescription}
             onChange={(e) => setHomeStoreDescription(e.target.value)}
             placeholder={t(`${S}.homeDescPlaceholder`)}
+            rows={4}
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+          />
+          <textarea
+            value={homeStoreDescriptionEn}
+            onChange={(e) => setHomeStoreDescriptionEn(e.target.value)}
+            placeholder={t(`${S}.homeDescPlaceholderEn`)}
             rows={4}
             className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
           />

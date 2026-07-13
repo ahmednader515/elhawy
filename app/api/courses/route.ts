@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import {
@@ -13,6 +14,7 @@ import {
   createCategory,
   categoryIsManageableOnDashboard,
 } from "@/lib/db";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 export async function GET() {
   try {
@@ -27,10 +29,28 @@ export async function GET() {
   }
 }
 
-type LessonInput = { title: string; titleAr?: string; videoUrl?: string; content?: string; pdfUrl?: string };
+type LessonInput = {
+  title?: string;
+  titleAr?: string;
+  titleEn?: string;
+  videoUrl?: string;
+  content?: string;
+  pdfUrl?: string;
+  acceptsHomework?: boolean;
+};
 type QuestionOptionInput = { text: string; isCorrect: boolean };
-type QuestionInput = { type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE"; questionText: string; options?: QuestionOptionInput[] };
-type QuizInput = { title: string; timeLimitMinutes?: number | null; questions: QuestionInput[] };
+type QuestionInput = {
+  type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE";
+  questionText: string;
+  options?: QuestionOptionInput[];
+};
+type QuizInput = {
+  title?: string;
+  titleAr?: string;
+  titleEn?: string;
+  timeLimitMinutes?: number | null;
+  questions: QuestionInput[];
+};
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -157,7 +177,7 @@ export async function POST(request: NextRequest) {
     const orderVal = order >= 0 ? order : i;
     await createLesson({
       course_id: course.id,
-      title: le.title?.trim() || `حصة ${i + 1}`,
+      title: (le as { titleEn?: string }).titleEn?.trim() || le.title?.trim() || `Lesson ${i + 1}`,
       title_ar: (le as { titleAr?: string }).titleAr?.trim() || null,
       slug: lessonSlug,
       content: le.content?.trim() || null,
@@ -177,7 +197,8 @@ export async function POST(request: NextRequest) {
       typeof mins === "number" && Number.isFinite(mins) && mins >= 1 ? mins : null;
     const quiz = await createQuiz({
       course_id: course.id,
-      title: q.title?.trim() || `اختبار ${qi + 1}`,
+      title: (q as { titleEn?: string }).titleEn?.trim() || q.title?.trim() || `Quiz ${qi + 1}`,
+      title_ar: (q as { titleAr?: string }).titleAr?.trim() || null,
       order: orderVal,
       time_limit_minutes: timeLimitMinutes,
     });
@@ -203,5 +224,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  revalidateTag(CACHE_TAGS.publishedCourses, "max");
   return NextResponse.json({ id: course.id, title: course.title, slug: course.slug });
 }

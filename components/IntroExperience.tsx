@@ -234,7 +234,14 @@ function IntroLoadingScreen({
       <div className="intro-loading-glow" aria-hidden />
       <div className="intro-loading-content">
         <div className="intro-loading-ring" aria-hidden>
-          <span className="intro-loading-ring-core">✦</span>
+          <img
+            className="intro-loading-ring-core"
+            src="/intro/logo.png"
+            alt=""
+            width={48}
+            height={48}
+            decoding="async"
+          />
         </div>
         <p className="intro-loading-title">أكاديمية الحاوي</p>
         <div className="intro-loading-bar" aria-hidden>

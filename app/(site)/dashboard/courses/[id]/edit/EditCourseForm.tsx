@@ -6,16 +6,29 @@ import { useT } from "@/components/LocaleProvider";
 import { CourseFormSaveOverlay } from "../../CourseFormSaveOverlay";
 
 type CategoryOption = { id: string; name: string; nameAr?: string | null };
-type LessonRow = { title: string; videoUrl: string; content: string; pdfUrl: string; acceptsHomework: boolean };
+type LessonRow = {
+  titleAr: string;
+  titleEn: string;
+  videoUrl: string;
+  content: string;
+  pdfUrl: string;
+  acceptsHomework: boolean;
+};
 type QuestionOptionRow = { text: string; isCorrect: boolean };
 type QuestionRow = { type: "MULTIPLE_CHOICE" | "TRUE_FALSE"; questionText: string; options: QuestionOptionRow[] };
-type QuizRow = { title: string; timeLimitMinutes: string; questions: QuestionRow[] };
+type QuizRow = { titleAr: string; titleEn: string; timeLimitMinutes: string; questions: QuestionRow[] };
 
 export type ContentOrderEntry = { type: "lesson"; index: number } | { type: "quiz"; index: number };
 
 /** API payloads may include legacy ESSAY questions. */
 type InitialQuestionRow = { type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE"; questionText: string; options?: QuestionOptionRow[] };
-type InitialQuizRow = { title: string; timeLimitMinutes?: number | null; questions: InitialQuestionRow[] };
+type InitialQuizRow = {
+  title?: string;
+  titleAr?: string | null;
+  titleEn?: string | null;
+  timeLimitMinutes?: number | null;
+  questions: InitialQuestionRow[];
+};
 
 type InitialData = {
   id: string;
@@ -30,13 +43,32 @@ type InitialData = {
   isPublished: boolean;
   maxQuizAttempts: number | null;
   categoryId: string;
-  lessons: LessonRow[];
+  lessons: Array<Partial<LessonRow> & { title?: string }>;
   quizzes: InitialQuizRow[];
   contentOrder: ContentOrderEntry[];
 };
 
-const defaultLesson: LessonRow = { title: "", videoUrl: "", content: "", pdfUrl: "", acceptsHomework: false };
-const defaultQuiz: QuizRow = { title: "", timeLimitMinutes: "", questions: [{ type: "MULTIPLE_CHOICE", questionText: "", options: [{ text: "", isCorrect: false }] }] };
+const defaultLesson: LessonRow = {
+  titleAr: "",
+  titleEn: "",
+  videoUrl: "",
+  content: "",
+  pdfUrl: "",
+  acceptsHomework: false,
+};
+const defaultQuiz: QuizRow = {
+  titleAr: "",
+  titleEn: "",
+  timeLimitMinutes: "",
+  questions: [{ type: "MULTIPLE_CHOICE", questionText: "", options: [{ text: "", isCorrect: false }] }],
+};
+
+function splitLegacyTitle(title?: string | null, titleAr?: string | null): { titleAr: string; titleEn: string } {
+  const ar = (titleAr ?? "").trim();
+  const primary = (title ?? "").trim();
+  if (ar) return { titleAr: ar, titleEn: primary };
+  return { titleAr: primary, titleEn: "" };
+}
 
 export function EditCourseForm({ courseId, initialData }: { courseId: string; initialData: InitialData }) {
   const router = useRouter();
@@ -68,8 +100,16 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
     initialData.lessons.length > 0
       ? initialData.lessons.map((l) => {
           const r = l as Record<string, unknown>;
+          const titles = splitLegacyTitle(
+            String(r.titleEn ?? r.title ?? ""),
+            r.titleAr != null ? String(r.titleAr) : null,
+          );
           return {
-            ...l,
+            titleAr: titles.titleAr,
+            titleEn: titles.titleEn,
+            videoUrl: String(r.videoUrl ?? ""),
+            content: String(r.content ?? ""),
+            pdfUrl: String(r.pdfUrl ?? ""),
             acceptsHomework: Boolean(r.acceptsHomework ?? r.accepts_homework ?? false),
           };
         })
@@ -107,24 +147,28 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
 
   const [quizzes, setQuizzes] = useState<QuizRow[]>(
     initialData.quizzes.length > 0
-      ? initialData.quizzes.map((q) => ({
-          title: q.title,
-          timeLimitMinutes: q.timeLimitMinutes != null ? String(q.timeLimitMinutes) : "",
-          questions: q.questions.length > 0
-            ? q.questions.map((qt) => {
-                const type = qt.type === "ESSAY" ? "MULTIPLE_CHOICE" as const : qt.type;
-                const options =
-                  qt.type === "TRUE_FALSE"
-                    ? qt.options?.length
-                      ? qt.options
-                      : tfPair()
-                    : qt.options?.length
-                      ? qt.options
-                      : [{ text: "", isCorrect: false }];
-                return { type, questionText: qt.questionText, options };
-              })
-            : [{ type: "MULTIPLE_CHOICE" as const, questionText: "", options: [{ text: "", isCorrect: false }] }],
-        }))
+      ? initialData.quizzes.map((q) => {
+          const titles = splitLegacyTitle(q.titleEn ?? q.title, q.titleAr ?? null);
+          return {
+            titleAr: titles.titleAr,
+            titleEn: titles.titleEn,
+            timeLimitMinutes: q.timeLimitMinutes != null ? String(q.timeLimitMinutes) : "",
+            questions: q.questions.length > 0
+              ? q.questions.map((qt) => {
+                  const type = qt.type === "ESSAY" ? "MULTIPLE_CHOICE" as const : qt.type;
+                  const options =
+                    qt.type === "TRUE_FALSE"
+                      ? qt.options?.length
+                        ? qt.options
+                        : tfPair()
+                      : qt.options?.length
+                        ? qt.options
+                        : [{ text: "", isCorrect: false }];
+                  return { type, questionText: qt.questionText, options };
+                })
+              : [{ type: "MULTIPLE_CHOICE" as const, questionText: "", options: [{ text: "", isCorrect: false }] }],
+          };
+        })
       : [defaultQuiz]
   );
   const [contentOrder, setContentOrder] = useState<ContentOrderEntry[]>(() => {
@@ -167,8 +211,8 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
         .map((e) => (e.type === "quiz" && e.index > qi ? { ...e, index: e.index - 1 } : e))
     );
   }
-  function updateQuizTitle(qi: number, title: string) {
-    setQuizzes((q) => q.map((x, i) => (i === qi ? { ...x, title } : x)));
+  function updateQuizTitle(qi: number, field: "titleAr" | "titleEn", value: string) {
+    setQuizzes((q) => q.map((x, i) => (i === qi ? { ...x, [field]: value } : x)));
   }
   function updateQuizTimeLimit(qi: number, value: string) {
     setQuizzes((q) => q.map((x, i) => (i === qi ? { ...x, timeLimitMinutes: value } : x)));
@@ -259,12 +303,13 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
     setError("");
     setLoading(true);
     try {
-    const validLessons = lessons.filter((l) => l.title.trim());
+    const validLessons = lessons.filter((l) => l.titleAr.trim() || l.titleEn.trim());
     const validQuizzes = quizzes
-      .filter((q) => q.title.trim())
+      .filter((q) => q.titleAr.trim() || q.titleEn.trim())
       .filter((q) => q.questions.some((qt) => qt.questionText.trim()) && q.questions.filter((qt) => qt.questionText.trim()).length > 0)
       .map((q) => ({
-        title: q.title.trim(),
+        titleAr: q.titleAr.trim() || q.titleEn.trim(),
+        titleEn: q.titleEn.trim() || q.titleAr.trim(),
         timeLimitMinutes: (() => {
           const n = parseInt(q.timeLimitMinutes, 10);
           return Number.isFinite(n) && n >= 1 ? n : undefined;
@@ -282,9 +327,9 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
                   : undefined,
           })),
       }));
-    const validLessonIndices = lessons.map((l, i) => (l.title.trim() ? i : -1)).filter((i) => i >= 0);
+    const validLessonIndices = lessons.map((l, i) => (l.titleAr.trim() || l.titleEn.trim() ? i : -1)).filter((i) => i >= 0);
     const validQuizIndices = quizzes
-      .map((q, i) => (q.title.trim() && q.questions.some((qt) => qt.questionText.trim()) ? i : -1))
+      .map((q, i) => ((q.titleAr.trim() || q.titleEn.trim()) && q.questions.some((qt) => qt.questionText.trim()) ? i : -1))
       .filter((i) => i >= 0);
     const filteredContentOrder = contentOrder
       .filter(
@@ -312,7 +357,8 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
         ? { categoryNameAr: form.categoryNameAr.trim(), categoryNameEn: form.categoryNameEn.trim() }
         : form.categoryId ? { categoryId: form.categoryId } : { categoryId: null }),
       lessons: validLessons.map((l) => ({
-        title: l.title.trim(),
+        titleAr: l.titleAr.trim() || l.titleEn.trim(),
+        titleEn: l.titleEn.trim() || l.titleAr.trim(),
         videoUrl: l.videoUrl.trim() || undefined,
         content: l.content.trim() || undefined,
         pdfUrl: l.pdfUrl.trim() || undefined,
@@ -506,7 +552,22 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
               )}
             </div>
             <div className="space-y-2">
-              <input type="text" value={lesson.title} onChange={(e) => updateLesson(i, "title", e.target.value)} placeholder={t(`${Cf}.lessonTitlePlaceholder`)} className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm" />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  type="text"
+                  value={lesson.titleAr}
+                  onChange={(e) => updateLesson(i, "titleAr", e.target.value)}
+                  placeholder={t(`${Cf}.lessonTitleArPlaceholder`)}
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+                />
+                <input
+                  type="text"
+                  value={lesson.titleEn}
+                  onChange={(e) => updateLesson(i, "titleEn", e.target.value)}
+                  placeholder={t(`${Cf}.lessonTitleEnPlaceholder`)}
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+                />
+              </div>
               <input type="url" value={lesson.videoUrl} onChange={(e) => updateLesson(i, "videoUrl", e.target.value)} placeholder={t(`${Cf}.youtubePlaceholder`)} className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm" />
               <div>
                 <label className="block text-xs text-[var(--color-muted)]">{t(`${Cf}.lessonPdfOptional`)}</label>
@@ -558,10 +619,23 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
         <p className="mb-4 text-sm text-[var(--color-muted)]">{t(`${Cf}.quizzesIntro`)}</p>
         {quizzes.map((quiz, qi) => (
           <div key={qi} className="mb-6 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <input type="text" value={quiz.title} onChange={(e) => updateQuizTitle(qi, e.target.value)} placeholder={t(`${Cf}.quizTitlePlaceholder`)} className="flex-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2" />
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={quiz.titleAr}
+                onChange={(e) => updateQuizTitle(qi, "titleAr", e.target.value)}
+                placeholder={t(`${Cf}.quizTitleArPlaceholder`)}
+                className="min-w-[140px] flex-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
+              />
+              <input
+                type="text"
+                value={quiz.titleEn}
+                onChange={(e) => updateQuizTitle(qi, "titleEn", e.target.value)}
+                placeholder={t(`${Cf}.quizTitleEnPlaceholder`)}
+                className="min-w-[140px] flex-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
+              />
               {quizzes.length > 1 && (
-                <button type="button" onClick={() => removeQuiz(qi)} className="mr-2 text-sm text-red-600 hover:underline">{t(`${Cf}.deleteQuiz`)}</button>
+                <button type="button" onClick={() => removeQuiz(qi)} className="text-sm text-red-600 hover:underline">{t(`${Cf}.deleteQuiz`)}</button>
               )}
             </div>
             <div className="mb-3">
@@ -647,8 +721,16 @@ export function EditCourseForm({ courseId, initialData }: { courseId: string; in
           {contentOrder.map((entry, pos) => {
             const label =
               entry.type === "lesson"
-                ? `${t(`${Cf}.lessonN`)}${entry.index + 1}${lessons[entry.index]?.title?.trim() ? ": " + lessons[entry.index].title.trim() : ""}`
-                : `${t(`${Cf}.orderQuizPrefix`)}${entry.index + 1}${quizzes[entry.index]?.title?.trim() ? ": " + quizzes[entry.index].title.trim() : ""}`;
+                ? `${t(`${Cf}.lessonN`)}${entry.index + 1}${
+                    lessons[entry.index]?.titleAr?.trim() || lessons[entry.index]?.titleEn?.trim()
+                      ? `: ${lessons[entry.index]?.titleAr?.trim() || lessons[entry.index]?.titleEn?.trim()}`
+                      : ""
+                  }`
+                : `${t(`${Cf}.orderQuizPrefix`)}${entry.index + 1}${
+                    quizzes[entry.index]?.titleAr?.trim() || quizzes[entry.index]?.titleEn?.trim()
+                      ? `: ${quizzes[entry.index]?.titleAr?.trim() || quizzes[entry.index]?.titleEn?.trim()}`
+                      : ""
+                  }`;
             return (
               <li
                 key={`${entry.type}-${entry.index}-${pos}`}

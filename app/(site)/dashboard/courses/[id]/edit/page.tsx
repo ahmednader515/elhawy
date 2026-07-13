@@ -71,8 +71,11 @@ export default async function EditCoursePage({ params }: Props) {
     categoryId: (c.categoryId ?? c.category_id ?? "") as string,
     lessons: data.lessons.map((l) => {
       const row = l as Record<string, unknown>;
+      const storedAr = String(row.titleAr ?? row.title_ar ?? "").trim();
+      const storedTitle = String(row.title ?? "");
       return {
-        title: String(row.title ?? ""),
+        titleAr: storedAr || storedTitle,
+        titleEn: storedAr ? storedTitle : "",
         videoUrl: String(row.videoUrl ?? row.video_url ?? ""),
         content: String(row.content ?? ""),
         pdfUrl: String(row.pdfUrl ?? row.pdf_url ?? ""),
@@ -81,6 +84,8 @@ export default async function EditCoursePage({ params }: Props) {
     }),
     quizzes: data.quizzes.map((q) => {
       const row = q as Record<string, unknown>;
+      const storedAr = String(row.titleAr ?? row.title_ar ?? "").trim();
+      const storedTitle = String(row.title ?? "");
       const rawLimit = row.timeLimitMinutes ?? row.time_limit_minutes;
       const timeLimitMinutes =
         typeof rawLimit === "number" && Number.isFinite(rawLimit) && rawLimit >= 1
@@ -90,7 +95,9 @@ export default async function EditCoursePage({ params }: Props) {
             : null;
       const questions = (row.questions ?? []) as Array<Record<string, unknown>>;
       return {
-        title: String(row.title ?? ""),
+        titleAr: storedAr || storedTitle,
+        titleEn: storedAr ? storedTitle : "",
+        title: storedTitle,
         timeLimitMinutes: timeLimitMinutes != null && Number.isFinite(timeLimitMinutes) && timeLimitMinutes >= 1 ? timeLimitMinutes : null,
         questions: questions.map((qt) => ({
           type: (qt.type === "ESSAY" || qt.type === "TRUE_FALSE" ? qt.type : "MULTIPLE_CHOICE") as "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE",

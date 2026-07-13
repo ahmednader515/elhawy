@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getServerTranslator } from "@/lib/i18n/server";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import { getLocaleFromCookie, getServerTranslator } from "@/lib/i18n/server";
 
 function courseSeg(course: { slug?: string | null; id: string }): string {
   const s = (course.slug && course.slug.trim()) ? String(course.slug).trim() : "";
@@ -20,7 +21,7 @@ function quizHref(course: { slug?: string | null; id: string }, quizId: string):
 type Props = {
   course: { id: string; slug?: string | null };
   lessons: Array<Record<string, unknown> & { id: string; title?: string; titleAr?: string | null; order?: number }>;
-  quizzes: Array<Record<string, unknown> & { id: string; title?: string; order?: number; _count?: { questions?: number } }>;
+  quizzes: Array<Record<string, unknown> & { id: string; title?: string; titleAr?: string | null; order?: number; _count?: { questions?: number } }>;
   currentLessonId?: string | null;
   currentQuizId?: string | null;
   completedLessonIds?: string[];
@@ -37,6 +38,7 @@ export async function CourseOutlineSidebar({
   passedQuizIds = [],
 }: Props) {
   const t = await getServerTranslator();
+  const locale = await getLocaleFromCookie();
   const lessonOrder = (l: { order?: number }) => (typeof l.order === "number" ? l.order : 999);
   const quizOrder = (q: { order?: number }) => (typeof q.order === "number" ? q.order : 999);
   const items = [
@@ -53,7 +55,11 @@ export async function CourseOutlineSidebar({
             const l = item.data;
             const isCurrent = l.id === currentLessonId;
             const isDone = completedLessonIds.includes(l.id);
-            const title = String((l as Record<string, unknown>).titleAr ?? (l as Record<string, unknown>).title ?? "");
+            const title = pickLocalizedText(
+              locale,
+              (l as Record<string, unknown>).titleAr as string | null | undefined,
+              (l as Record<string, unknown>).title as string | null | undefined,
+            );
             return (
               <li key={`l-${l.id}`}>
                 <Link
@@ -74,7 +80,12 @@ export async function CourseOutlineSidebar({
           const q = item.data;
           const isCurrent = q.id === currentQuizId;
           const isPassed = passedQuizIds.includes(q.id);
-          const title = String((q as Record<string, unknown>).title ?? "");
+          const title = pickLocalizedText(
+            locale,
+            ((q as Record<string, unknown>).titleAr as string | null | undefined) ??
+              ((q as Record<string, unknown>).title_ar as string | null | undefined),
+            (q as Record<string, unknown>).title as string | null | undefined,
+          );
           const qCount = (q as { _count?: { questions?: number } })._count;
           const count = qCount != null && typeof qCount === "object" && "questions" in qCount ? Number(qCount.questions) || 0 : 0;
           return (

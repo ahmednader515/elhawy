@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { canManageCourse } from "@/lib/permissions";
@@ -17,11 +18,30 @@ import {
   createCategory,
   categoryIsManageableOnDashboard,
 } from "@/lib/db";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
-type LessonInput = { title: string; titleAr?: string; videoUrl?: string; content?: string; pdfUrl?: string; acceptsHomework?: boolean };
+type LessonInput = {
+  title?: string;
+  titleAr?: string;
+  titleEn?: string;
+  videoUrl?: string;
+  content?: string;
+  pdfUrl?: string;
+  acceptsHomework?: boolean;
+};
 type QuestionOptionInput = { text: string; isCorrect: boolean };
-type QuestionInput = { type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE"; questionText: string; options?: QuestionOptionInput[] };
-type QuizInput = { title: string; timeLimitMinutes?: number | null; questions: QuestionInput[] };
+type QuestionInput = {
+  type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE";
+  questionText: string;
+  options?: QuestionOptionInput[];
+};
+type QuizInput = {
+  title?: string;
+  titleAr?: string;
+  titleEn?: string;
+  timeLimitMinutes?: number | null;
+  questions: QuestionInput[];
+};
 type ContentOrderEntry = { type: "lesson"; index: number } | { type: "quiz"; index: number };
 
 /** تحديث دورة - للأدمن ومساعد الأدمن */
@@ -154,7 +174,7 @@ export async function PUT(
     const orderVal = order >= 0 ? order : i;
     await createLesson({
       course_id: id,
-      title: le.title?.trim() || `حصة ${i + 1}`,
+      title: le.titleEn?.trim() || le.title?.trim() || `Lesson ${i + 1}`,
       title_ar: le.titleAr?.trim() || null,
       slug: lessonSlug,
       content: le.content?.trim() || null,
@@ -175,7 +195,8 @@ export async function PUT(
     const orderVal = order >= 0 ? order : lessons.length + qi;
     const quiz = await createQuiz({
       course_id: id,
-      title: q.title?.trim() || `اختبار ${qi + 1}`,
+      title: q.titleEn?.trim() || q.title?.trim() || `Quiz ${qi + 1}`,
+      title_ar: q.titleAr?.trim() || null,
       order: orderVal,
       time_limit_minutes: timeLimitMinutes,
     });
@@ -201,6 +222,7 @@ export async function PUT(
     }
   }
 
+  revalidateTag(CACHE_TAGS.publishedCourses, "max");
   return NextResponse.json({ success: true });
 }
 
@@ -245,6 +267,7 @@ export async function GET(
     categoryId: (c as { categoryId?: string | null }).categoryId ?? null,
     lessons: data.lessons.map((l) => ({
       title: l.title,
+      titleEn: l.title,
       titleAr: l.titleAr ?? l.title_ar,
       videoUrl: l.videoUrl ?? l.video_url,
       content: l.content,
@@ -253,6 +276,8 @@ export async function GET(
     })),
     quizzes: data.quizzes.map((q) => ({
       title: q.title,
+      titleEn: q.title,
+      titleAr: (q as { titleAr?: string | null; title_ar?: string | null }).titleAr ?? (q as { title_ar?: string | null }).title_ar ?? null,
       timeLimitMinutes: (q as { timeLimitMinutes?: number | null }).timeLimitMinutes ?? null,
       questions: (q.questions ?? []).map((qt) => ({
         type: qt.type,
@@ -287,5 +312,6 @@ export async function DELETE(
 
   await deleteCourse(id);
 
+  revalidateTag(CACHE_TAGS.publishedCourses, "max");
   return NextResponse.json({ success: true });
 }

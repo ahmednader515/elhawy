@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { useDashboardTable, dateLocaleForUi } from "@/lib/i18n/dashboard-table";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
 
 type StreamRow = {
   id: string;
@@ -70,7 +71,7 @@ export function LiveStreamsList({ streams }: { streams: StreamRow[] }) {
         <tbody>
           {streams.map((s) => (
             <tr key={s.id} className="border-b border-[var(--color-border)] last:border-0">
-              <td className="p-3">{s.titleAr || s.title}</td>
+              <td className="p-3">{pickLocalizedText(locale, s.titleAr, s.title)}</td>
               <td className="p-3">{s.provider === "zoom" ? t(`${L}.providerZoom`) : t(`${L}.providerMeet`)}</td>
               <td className="p-3">{s.course?.title ?? dash}</td>
               <td className="p-3">{formatDate(s.scheduledAt)}</td>

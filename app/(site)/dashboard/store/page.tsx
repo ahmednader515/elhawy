@@ -41,12 +41,16 @@ export default async function StoreDashboardPage() {
   const initialHomeStoreDescription =
     homepage?.storeSectionDescription?.trim() ||
     t("dashboard.storeAdminDefaults.sectionDescriptionFallback");
+  const initialHomeStoreTitleEn = homepage?.storeSectionTitleEn?.trim() || "";
+  const initialHomeStoreDescriptionEn = homepage?.storeSectionDescriptionEn?.trim() || "";
 
   return (
     <StoreAdminClient
       initialEnabled={enabled}
       initialHomeStoreTitle={initialHomeStoreTitle}
       initialHomeStoreDescription={initialHomeStoreDescription}
+      initialHomeStoreTitleEn={initialHomeStoreTitleEn}
+      initialHomeStoreDescriptionEn={initialHomeStoreDescriptionEn}
       initialProducts={products}
       initialPurchases={purchases}
       initialStats={stats}

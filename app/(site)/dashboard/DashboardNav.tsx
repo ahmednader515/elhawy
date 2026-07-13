@@ -69,6 +69,9 @@ export function DashboardNav({
         <NavLink href="/dashboard/challenges">
           {t("dashboardNav.challenges", "Hawi challenges")}
         </NavLink>
+        <NavLink href="/dashboard/elhawy-world">
+          {t("dashboardNav.elhawyWorld", "Elhawy World")}
+        </NavLink>
         <NavLink href="/dashboard/referral">
           {t("dashboardNav.referral", "Invite a friend")}
         </NavLink>
@@ -134,6 +137,9 @@ export function DashboardNav({
           <NavLink href="/dashboard/subscriptions">{t("dashboardNav.platformSubscriptions", "Platform subscriptions")}</NavLink>
           <NavLink href="/dashboard/subscription-students">{t("dashboardNav.subscribedStudents", "Subscribed students")}</NavLink>
           <NavLink href="/dashboard/store">{t("dashboardNav.platformStore", "Platform store")}</NavLink>
+          <NavLink href="/dashboard/elhawy-world/manage">
+            {t("dashboardNav.elhawyWorldManage", "Elhawy World videos")}
+          </NavLink>
           <NavLink href="/dashboard/gamification/leaderboard">
             {t("dashboardNav.adminLeaderboard", "Student leaderboard")}
           </NavLink>

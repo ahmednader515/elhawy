@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { unstable_noStore } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import {
@@ -8,7 +7,7 @@ import {
   getEnrollment,
   getAllowedLessonIdsForUserCourse,
   getAllowedQuizIdsForUserCourse,
-  getUserById,
+  getUserBalance,
   getLiveStreamsByCourseId,
   getHomepageSettings,
   hasFullCourseAccessAsStudent,
@@ -24,9 +23,8 @@ import { pickLocalizedText } from "@/lib/i18n/localized-field";
 
 type Props = { params: Promise<{ slug: string }> };
 
-/** عدم التخزين المؤقت — دائماً التحقق من وجود الدورة (تجنب 404 للدورات المحذوفة) */
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+/** محتوى الدورة يُجمَع عبر React cache() في الطلب؛ الجلسة تبقى ديناميكية */
+export const revalidate = 60;
 
 function isCourseId(segment: string): boolean {
   return /^c[a-z0-9]{24}$/i.test(segment);
@@ -49,7 +47,6 @@ function normalizeSlugForUrl(s: string | null | undefined): string {
 export async function generateMetadata({ params }: Props) {
   const [t, locale] = await Promise.all([getServerTranslator(), getLocaleFromCookie()]);
   const { slug: segment } = await params;
-  unstable_noStore();
   const decoded = decodeSlug(segment);
   const data = await getCourseWithContent(decoded);
   const course = data?.course;
@@ -75,7 +72,6 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function CoursePage({ params }: Props) {
-  unstable_noStore();
   const t = await getServerTranslator();
   const locale = await getLocaleFromCookie();
   const { slug: segment } = await params;
@@ -92,9 +88,9 @@ export default async function CoursePage({ params }: Props) {
   try {
     data = await getCourseWithContent(decoded);
     if (data?.course && session?.user?.id && session.user.role === "STUDENT") {
-      const [en, user, lessons, quizzes, fullAccess, subPaid] = await Promise.all([
+      const [en, balance, lessons, quizzes, fullAccess, subPaid] = await Promise.all([
         getEnrollment(session.user.id, data.course.id),
-        getUserById(session.user.id),
+        getUserBalance(session.user.id),
         getAllowedLessonIdsForUserCourse(session.user.id, data.course.id),
         getAllowedQuizIdsForUserCourse(session.user.id, data.course.id),
         hasFullCourseAccessAsStudent(session.user.id, data.course.id),
@@ -105,7 +101,7 @@ export default async function CoursePage({ params }: Props) {
         allowedLessonIds = lessons;
         allowedQuizIds = quizzes;
       }
-      userBalance = Number(user?.balance) || 0;
+      userBalance = balance;
       hasFullStudentAccess = fullAccess;
       paidCourseCoveredBySubscription = subPaid && !isEnrolled;
       if (paidCourseCoveredBySubscription) {
@@ -311,7 +307,11 @@ export default async function CoursePage({ params }: Props) {
                     >
                       <div>
                         <span className="font-medium text-[var(--color-foreground)]">
-                          {String(ls.title_ar ?? ls.titleAr ?? ls.title ?? "")}
+                          {pickLocalizedText(
+                            locale,
+                            (ls.title_ar as string | null | undefined) ?? (ls.titleAr as string | null | undefined),
+                            ls.title as string | null | undefined,
+                          )}
                         </span>
                         <span className="mr-2 text-sm text-[var(--color-muted)]">
                           {ls.provider === "google_meet" ? "Google Meet" : "Zoom"} — {formatStreamDate((ls.scheduled_at ?? ls.scheduledAt) as string | Date || new Date())}
@@ -389,7 +389,11 @@ export default async function CoursePage({ params }: Props) {
                         </span>
                         <div className="min-w-0 flex-1">
                           <span className="font-medium text-[var(--color-foreground)]">
-                            {String((lesson as Record<string, unknown>).titleAr ?? (lesson as Record<string, unknown>).title ?? "")}
+                            {pickLocalizedText(
+                              locale,
+                              (lesson as Record<string, unknown>).titleAr as string | null | undefined,
+                              (lesson as Record<string, unknown>).title as string | null | undefined,
+                            )}
                           </span>
                           {(lesson as Record<string, unknown>).duration ? (
                             <span className="mr-2 text-sm text-[var(--color-muted)]">
@@ -446,7 +450,11 @@ export default async function CoursePage({ params }: Props) {
                               ✦
                             </span>
                           ) : null}
-                          {String(q.title ?? "")}
+                          {pickLocalizedText(
+                            locale,
+                            (q.titleAr as string | null | undefined) ?? (q.title_ar as string | null | undefined),
+                            q.title as string | null | undefined,
+                          )}
                         </span>
                         <span className="text-sm text-[var(--color-muted)]">{questionsCount} {t("courses.questions", "questions")}</span>
                       </>

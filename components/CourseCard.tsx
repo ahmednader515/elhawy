@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useT } from "./LocaleProvider";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import { useLocale, useT } from "./LocaleProvider";
 import "./course-card.css";
 
 function normalizeCoursePrice(
@@ -37,16 +38,20 @@ type Course = {
   id: string;
   title: string;
   titleAr?: string | null;
+  title_ar?: string | null;
   slug?: string | null;
   shortDesc?: string | null;
   shortDescEn?: string | null;
+  short_desc?: string | null;
+  short_desc_en?: string | null;
   duration?: string | null;
   level?: string | null;
   imageUrl?: string | null;
+  image_url?: string | null;
   price?: number | { toNumber?: () => number } | string;
   courseRating?: number | { toNumber?: () => number } | string | null;
   courseRatingCount?: number | { toNumber?: () => number } | string | null;
-  category?: { name: string; nameAr?: string | null } | null;
+  category?: { name: string; nameAr?: string | null; name_ar?: string | null } | null;
 };
 
 function CardCorner({ rank, suit }: { rank: string; suit: string }) {
@@ -62,9 +67,17 @@ function CardCorner({ rank, suit }: { rank: string; suit: string }) {
 
 export function CourseCard({ course }: { course: Course }) {
   const t = useT();
-  const displayTitle = course.titleAr || course.title;
-  const categoryName = course.category?.nameAr || course.category?.name;
-  const shortDescription = course.shortDesc || course.shortDescEn;
+  const locale = useLocale();
+  const displayTitle = pickLocalizedText(locale, course.titleAr ?? course.title_ar, course.title);
+  const categoryName = course.category
+    ? pickLocalizedText(locale, course.category.nameAr ?? course.category.name_ar, course.category.name)
+    : undefined;
+  const shortDescription =
+    pickLocalizedText(
+      locale,
+      course.shortDesc ?? course.short_desc,
+      course.shortDescEn ?? course.short_desc_en,
+    ) || undefined;
   const slugOrId = course.slug && course.slug.trim() ? encodeURIComponent(course.slug.trim()) : course.id;
   const href = slugOrId ? `/courses/${slugOrId}` : "/courses";
   const priceValue = normalizeCoursePrice(course.price);
@@ -80,6 +93,7 @@ export function CourseCard({ course }: { course: Course }) {
 
   const rank = rankForCourse(course.level);
   const suit = suitForCourseId(course.id);
+  const imageUrl = course.imageUrl ?? course.image_url;
 
   return (
     <Link href={href} className="playing-card group">
@@ -92,8 +106,8 @@ export function CourseCard({ course }: { course: Course }) {
         </div>
 
         <div className="playing-card-art">
-          {course.imageUrl ? (
-            <img src={course.imageUrl} alt="" loading="lazy" decoding="async" />
+          {imageUrl ? (
+            <img src={imageUrl} alt="" loading="lazy" decoding="async" />
           ) : (
             <span className="playing-card-art-placeholder" aria-hidden>
               ✦

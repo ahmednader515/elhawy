@@ -32,7 +32,11 @@ export function TeachersBrowseClient({ initialTeachers }: { initialTeachers: Tea
     return sortedByName.filter((t) => {
       const name = (t.name ?? "").toLowerCase();
       const sub = (t.teacherSubject ?? "").toLowerCase();
-      const inCourse = (t.courses ?? []).some((c) => (c.title ?? "").toLowerCase().includes(q));
+      const inCourse = (t.courses ?? []).some(
+        (c) =>
+          (c.title ?? "").toLowerCase().includes(q) ||
+          (c.titleAr ?? "").toLowerCase().includes(q),
+      );
       return name.includes(q) || sub.includes(q) || inCourse;
     });
   }, [sortedByName, searchQuery]);

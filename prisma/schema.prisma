@@ -98,6 +98,7 @@ enum QuestionType {
 model Quiz {
   id               String        @id @default(cuid())
   title            String
+  titleAr          String?       @map("title_ar")
   courseId         String        @map("course_id")
   order            Int           @default(0)
   timeLimitMinutes Int?          @map("time_limit_minutes") // وقت الاختبار بالدقائق (null = غير محدود)

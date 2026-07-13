@@ -133,7 +133,8 @@
     inset 0 0 20px rgba(124, 58, 237, 0.15);
 }
 
-.playing-card-art img {
+.playing-card-art img,
+.playing-card-art-img {
   display: block;
   height: 100%;
   width: 100%;

@@ -1,6 +1,10 @@
-import Link from "next/link";
+"use client";
 
-export type TeacherCardCourse = { id: string; slug: string; title: string };
+import Link from "next/link";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
+import { useLocale } from "@/components/LocaleProvider";
+
+export type TeacherCardCourse = { id: string; slug: string; title: string; titleAr?: string | null };
 
 type Props = {
   teacherId: string;
@@ -20,6 +24,7 @@ export function TeacherPublicCard({
   courses,
   titleTag: TitleTag = "h3",
 }: Props) {
+  const locale = useLocale();
   const subject = teacherSubject?.trim() || "مدرس على المنصة";
   const profileHref = `/courses?teacher=${encodeURIComponent(teacherId)}`;
   const previewCourses = courses.slice(0, 2);
@@ -72,7 +77,7 @@ export function TeacherPublicCard({
                   key={c.id}
                   className="text-sm leading-snug text-[var(--color-foreground)] [text-wrap:pretty]"
                 >
-                  <span className="line-clamp-2">{c.title}</span>
+                  <span className="line-clamp-2">{pickLocalizedText(locale, c.titleAr, c.title)}</span>
                 </li>
               ))}
             </ul>

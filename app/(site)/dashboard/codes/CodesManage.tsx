@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useT } from "@/components/LocaleProvider";
 import { useDashboardTable, dateLocaleForUi } from "@/lib/i18n/dashboard-table";
 import { fillMessage } from "@/lib/i18n/interpolate";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
 
 type CodeRow = {
   id: string;
@@ -346,7 +347,7 @@ export function CodesManage({ courseOptions }: { courseOptions: { id: string; ti
                       <>
                         <div className="max-h-32 space-y-1 overflow-auto pr-1">
                           {courseLessons.map((l) => {
-                            const title = l.titleAr ?? l.title;
+                            const title = pickLocalizedText(locale, l.titleAr, l.title);
                             const checked = selectedLessonIds.has(l.id);
                             return (
                               <label key={l.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-[var(--color-border)]/30">
@@ -561,7 +562,7 @@ export function CodesManage({ courseOptions }: { courseOptions: { id: string; ti
                       />
                     </td>
                     <td className="p-2 text-[var(--color-foreground)]">
-                      {row.courseTitleAr ?? row.courseTitle ?? row.courseId}
+                      {pickLocalizedText(locale, row.courseTitleAr, row.courseTitle) || row.courseId}
                     </td>
                     <td className="p-2 font-mono text-[var(--color-foreground)]">{row.code}</td>
                     <td className="p-2 text-[var(--color-muted)]">{scopeLabel(row)}</td>

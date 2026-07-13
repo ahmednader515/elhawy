@@ -282,6 +282,21 @@ export interface StoreProduct {
   createdAt: string;
 }
 
+/** فيديو «عالم الحاوي» — روابط يوتيوب يديرها الأدمن ويشاهدها الطلاب */
+export interface ElhawyWorldVideo {
+  id: string;
+  title: string;
+  titleEn: string | null;
+  description: string | null;
+  descriptionEn: string | null;
+  youtubeUrl: string;
+  coverImageUrl: string | null;
+  isPublished: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type SubscriptionDurationKind = "week" | "month" | "year";
 
 export interface Course {
@@ -355,6 +370,7 @@ export type QuestionType = "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE";
 export interface Quiz {
   id: string;
   title: string;
+  title_ar?: string | null;
   course_id: string;
   order: number;
   time_limit_minutes?: number | null;
@@ -423,7 +439,9 @@ export interface CourseApp {
   titleAr?: string | null;
   slug: string;
   description?: string;
+  descriptionEn?: string | null;
   shortDesc?: string | null;
+  shortDescEn?: string | null;
   imageUrl?: string | null;
   price?: number | string;
   isPublished?: boolean;
@@ -455,6 +473,7 @@ export interface LessonApp {
 export interface QuizApp {
   id: string;
   title: string;
+  titleAr?: string | null;
   courseId: string;
   order: number;
   timeLimitMinutes?: number | null;

@@ -11,7 +11,12 @@ export async function PATCH(request: NextRequest) {
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
-  let body: { title?: unknown; description?: unknown };
+  let body: {
+    title?: unknown;
+    description?: unknown;
+    titleEn?: unknown;
+    descriptionEn?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -19,6 +24,8 @@ export async function PATCH(request: NextRequest) {
   }
   const titleRaw = typeof body.title === "string" ? body.title.trim() : "";
   const descRaw = typeof body.description === "string" ? body.description.trim() : "";
+  const titleEnRaw = typeof body.titleEn === "string" ? body.titleEn.trim() : "";
+  const descEnRaw = typeof body.descriptionEn === "string" ? body.descriptionEn.trim() : "";
   if (!titleRaw) {
     return NextResponse.json({ error: "عنوان قسم المتجر في الرئيسية مطلوب" }, { status: 400 });
   }
@@ -26,6 +33,8 @@ export async function PATCH(request: NextRequest) {
     await updateHomepageSettings({
       store_section_title: titleRaw.slice(0, TITLE_MAX),
       store_section_description: descRaw.length > 0 ? descRaw.slice(0, DESC_MAX) : null,
+      store_section_title_en: titleEnRaw.length > 0 ? titleEnRaw.slice(0, TITLE_MAX) : null,
+      store_section_description_en: descEnRaw.length > 0 ? descEnRaw.slice(0, DESC_MAX) : null,
     });
   } catch (e) {
     console.error("store-home-section PATCH", e);

@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CONCURRENT_SESSION_ERROR } from "@/lib/auth-constants";
-import LoginBackground from "./LoginBackground";
 import { useT } from "@/components/LocaleProvider";
+
+const LoginBackground = dynamic(() => import("./LoginBackground"), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 -z-10 bg-black" aria-hidden />,
+});
 
 function LoginForm() {
   const t = useT();

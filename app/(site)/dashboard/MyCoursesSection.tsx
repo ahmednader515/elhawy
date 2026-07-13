@@ -17,6 +17,7 @@ type CourseCardCourse = {
   titleAr?: string | null;
   slug?: string | null;
   shortDesc?: string | null;
+  shortDescEn?: string | null;
   duration?: string | null;
   level?: string | null;
   imageUrl?: string | null;
@@ -31,6 +32,12 @@ function toCourseCardCourse(c: CourseWithCategory): CourseCardCourse {
   const cat = c.category as { name?: string; nameAr?: string | null } | undefined;
   const titleAr = raw.titleAr != null ? String(raw.titleAr) : (c.title_ar ?? null);
   const shortDesc = raw.shortDesc != null ? String(raw.shortDesc) : (c.short_desc ?? null);
+  const shortDescEn =
+    raw.shortDescEn != null
+      ? String(raw.shortDescEn)
+      : c.short_desc_en != null
+        ? String(c.short_desc_en)
+        : null;
   const imageUrl = raw.imageUrl != null ? String(raw.imageUrl) : (c.image_url ?? null);
   const nameAr = cat && (cat as Record<string, unknown>).nameAr != null ? String((cat as Record<string, unknown>).nameAr) : (cat?.name ?? null);
   return {
@@ -39,6 +46,7 @@ function toCourseCardCourse(c: CourseWithCategory): CourseCardCourse {
     titleAr: titleAr ?? undefined,
     slug: c.slug,
     shortDesc: shortDesc ?? undefined,
+    shortDescEn: shortDescEn ?? undefined,
     duration: c.duration ?? undefined,
     level: c.level ?? undefined,
     imageUrl: imageUrl ?? undefined,

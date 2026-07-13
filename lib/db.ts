@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { neon } from "@neondatabase/serverless";
+import { CACHE_TAGS } from "./cache-tags";
 import type {
   User,
   UserRole,
@@ -125,6 +127,29 @@ export async function getUserByEmailOrPhone(emailOrPhone: string): Promise<User 
   const digits = withWesternDigits.replace(/\D/g, "");
   if (digits.length < 10) return null;
 
+  const exactVariants = new Set<string>([trimmed, withWesternDigits, digits]);
+  if (digits.startsWith("20") && digits.length === 12) {
+    exactVariants.add("0" + digits.slice(2));
+    exactVariants.add("+" + digits);
+  }
+  if (digits.startsWith("0") && digits.length === 11) {
+    exactVariants.add("20" + digits.slice(1));
+    exactVariants.add("+20" + digits.slice(1));
+  }
+  if (digits.length === 10) {
+    exactVariants.add("0" + digits);
+    exactVariants.add("20" + digits);
+    exactVariants.add("+20" + digits);
+  }
+  const variantList = [...exactVariants];
+  const exactRows = (await sql(
+    `SELECT * FROM "User"
+     WHERE guardian_number = ANY($1::text[]) OR student_number = ANY($1::text[])
+     LIMIT 1`,
+    [variantList],
+  )) as User[];
+  if (exactRows[0]) return exactRows[0];
+
   const matchByDigits = async (norm: string) => {
     const rows = await sql`
       SELECT * FROM "User"
@@ -155,6 +180,12 @@ export async function getUserByEmailOrPhone(emailOrPhone: string): Promise<User 
 export async function getUserById(id: string): Promise<User | null> {
   const rows = await sql`SELECT * FROM "User" WHERE id = ${id} LIMIT 1`;
   return (rows[0] as User) ?? null;
+}
+
+/** رصيد المستخدم فقط — بدون جلب كلمة المرور وباقي الأعمدة */
+export async function getUserBalance(id: string): Promise<number> {
+  const rows = await sql`SELECT balance FROM "User" WHERE id = ${id} LIMIT 1`;
+  return Number((rows[0] as { balance?: unknown } | undefined)?.balance ?? 0) || 0;
 }
 
 /** جلسة واحدة نشطة لكل مستخدم — نستخدمها لمنع تسجيل الدخول من أكثر من جهاز */
@@ -1233,7 +1264,7 @@ export async function listTeachersPublic(categoryId?: string | null): Promise<
 }
 
 /** دورة منشورة تظهر ضمن بطاقة المدرس العامة */
-export type TeacherHomepageCourse = { id: string; slug: string; title: string };
+export type TeacherHomepageCourse = { id: string; slug: string; title: string; titleAr?: string | null };
 
 export type TeacherHomepageRow = {
   id: string;
@@ -1336,14 +1367,14 @@ export async function listTeachersForHomepage(): Promise<TeacherHomepageRow[]> {
     for (const r of courseRows as Record<string, unknown>[]) {
       const tid = String(r.created_by_id ?? "");
       if (!tid) continue;
-      const titleAr = (r.title_ar as string | null)?.trim();
-      const title = (r.title as string | null)?.trim() || "دورة";
-      const display = titleAr || title;
+      const titleAr = (r.title_ar as string | null)?.trim() || null;
+      const title = (r.title as string | null)?.trim() || "Course";
       const list = byTeacher.get(tid);
       const item: TeacherHomepageCourse = {
         id: String(r.id),
         slug: String(r.slug ?? ""),
-        title: display,
+        title,
+        titleAr,
       };
       if (list) list.push(item);
       else byTeacher.set(tid, [item]);
@@ -1374,21 +1405,23 @@ export async function getTeacherIdsExcludedFromPublicCourseLists(): Promise<Set<
 
 async function getHomepageSettingsUncached(): Promise<HomepageSetting> {
   try {
-    await ensureHomepageHeroTemplateColumns();
-    await ensureHomepageHeroSliderCourseIdColumns();
-    await ensureHomepageReviewsSectionCopyColumns();
-    await ensureHomepageHeroCustomBgColumns();
-    await ensureAddBalanceSettingsColumns();
-    await ensureHomepageStoreEnabledColumn();
-    await ensureHomepageStoreSectionCopyColumns();
-    await ensureHomepagePrimaryColorColumn();
-    await ensureHomepageHeaderLogoColumn();
-    await ensureHomepageTeamSupportLinksColumns();
-    await ensureHomepageCtaCopyColumns();
-    await ensureHomepageBilingualTextColumns();
-    await ensureHomepagePlatformDetailsColumns();
-    await ensureHomepagePlatformNewsColumns();
-    await ensureHomepageCopyrightOverlayColumns();
+    await Promise.all([
+      ensureHomepageHeroTemplateColumns(),
+      ensureHomepageHeroSliderCourseIdColumns(),
+      ensureHomepageReviewsSectionCopyColumns(),
+      ensureHomepageHeroCustomBgColumns(),
+      ensureAddBalanceSettingsColumns(),
+      ensureHomepageStoreEnabledColumn(),
+      ensureHomepageStoreSectionCopyColumns(),
+      ensureHomepagePrimaryColorColumn(),
+      ensureHomepageHeaderLogoColumn(),
+      ensureHomepageTeamSupportLinksColumns(),
+      ensureHomepageCtaCopyColumns(),
+      ensureHomepageBilingualTextColumns(),
+      ensureHomepagePlatformDetailsColumns(),
+      ensureHomepagePlatformNewsColumns(),
+      ensureHomepageCopyrightOverlayColumns(),
+    ]);
     const rows = await sql`SELECT * FROM "HomepageSetting" WHERE id = 'default' LIMIT 1`;
     const row = rows[0] as Record<string, unknown> | undefined;
     if (!row) return HOMEPAGE_DEFAULTS;
@@ -1889,8 +1922,14 @@ async function getHomepageSettingsUncached(): Promise<HomepageSetting> {
   }
 }
 
-/** نفس الطلب (layout + metadata + الصفحة) يقرأ الإعدادات مرة واحدة فقط */
-export const getHomepageSettings = cache(getHomepageSettingsUncached);
+/** نفس الطلب (layout + metadata + الصفحة) يقرأ الإعدادات مرة واحدة فقط؛ عبر الطلبات يُخزَّن ٦٠ ثانية */
+const getHomepageSettingsCrossRequest = unstable_cache(
+  async () => getHomepageSettingsUncached(),
+  ["homepage-settings-v1"],
+  { revalidate: 60, tags: [CACHE_TAGS.homepageSettings] },
+);
+
+export const getHomepageSettings = cache(getHomepageSettingsCrossRequest);
 
 function pickReviewsSectionString(
   row: Record<string, unknown>,
@@ -3264,6 +3303,10 @@ export async function getCourseBySlugOrId(slugOrId: string): Promise<Course | nu
 }
 
 export async function getCoursesPublished(withCategory = true): Promise<(Course & { category?: Category })[]> {
+  return getCoursesPublishedCached(withCategory);
+}
+
+async function getCoursesPublishedUncached(withCategory: boolean): Promise<(Course & { category?: Category })[]> {
   await ensureLessonRatingsSchema();
   if (!withCategory) {
     const rows = await sql`
@@ -3291,18 +3334,22 @@ export async function getCoursesPublished(withCategory = true): Promise<(Course 
   }) as unknown as (Course & { category?: Category })[];
 }
 
+const getCoursesPublishedCached = unstable_cache(
+  async (withCategory: boolean) => getCoursesPublishedUncached(withCategory),
+  ["courses-published-v1"],
+  { revalidate: 60, tags: [CACHE_TAGS.publishedCourses] },
+);
+
 /** يعيد خريطة معرف كورس → slug للكورسات المنشورة فقط (لروابط السلايدر في الصفحة الرئيسية). */
 export async function getPublishedCourseSlugsByIds(ids: string[]): Promise<Map<string, string>> {
   const uniq = [...new Set(ids.map((id) => String(id).trim()).filter(Boolean))];
   const map = new Map<string, string>();
   if (uniq.length === 0) return map;
-  const results = await Promise.all(
-    uniq.map((id) =>
-      sql`SELECT id, slug FROM "Course" WHERE id = ${id} AND is_published = true LIMIT 1`,
-    ),
-  );
-  for (const rows of results) {
-    const r = rows[0] as { id?: unknown; slug?: unknown } | undefined;
+  const rows = (await sql(
+    `SELECT id, slug FROM "Course" WHERE is_published = true AND id = ANY($1::text[])`,
+    [uniq],
+  )) as { id?: unknown; slug?: unknown }[];
+  for (const r of rows) {
     if (r?.id != null && r?.slug != null) {
       map.set(String(r.id), String(r.slug));
     }
@@ -3584,7 +3631,9 @@ export async function deleteLessonsByCourseId(courseId: string): Promise<void> {
 }
 
 /** جلب كورس مع الحصص والاختبارات (عدد أسئلة كل اختبار) — للصفحة التفصيلية */
-export async function getCourseWithContent(segment: string): Promise<{
+export const getCourseWithContent = cache(async function getCourseWithContent(
+  segment: string,
+): Promise<{
   course: (Course & { category?: Record<string, unknown> }) | null;
   lessons: Record<string, unknown>[];
   quizzes: Array<Record<string, unknown> & { _count: { questions: number } }>;
@@ -3624,7 +3673,7 @@ export async function getCourseWithContent(segment: string): Promise<{
     lessons,
     quizzes,
   };
-}
+});
 
 /** جلب دورة كاملة مع حصص واختبارات (أسئلة + خيارات) — لصفحة التعديل */
 export async function getCourseForEdit(courseId: string): Promise<{
@@ -3636,19 +3685,51 @@ export async function getCourseForEdit(courseId: string): Promise<{
   const courseRow = courseRows[0] as Record<string, unknown> | undefined;
   if (!courseRow) return null;
 
-  const lessonRows = await sql`SELECT * FROM "Lesson" WHERE course_id = ${courseId} ORDER BY "order" ASC`;
-  const quizRows = await sql`SELECT * FROM "Quiz" WHERE course_id = ${courseId} ORDER BY "order" ASC`;
-  const quizzes: Array<Record<string, unknown> & { questions: Array<Record<string, unknown> & { options: Record<string, unknown>[] }> }> = [];
+  const [lessonRows, quizRows] = await Promise.all([
+    sql`SELECT * FROM "Lesson" WHERE course_id = ${courseId} ORDER BY "order" ASC`,
+    sql`SELECT * FROM "Quiz" WHERE course_id = ${courseId} ORDER BY "order" ASC`,
+  ]);
 
-  for (const q of quizRows as Record<string, unknown>[]) {
-    const questionRows = await sql`SELECT * FROM "Question" WHERE quiz_id = ${q.id} ORDER BY "order" ASC`;
-    const questions: Array<Record<string, unknown> & { options: Record<string, unknown>[] }> = [];
-    for (const qu of questionRows as Record<string, unknown>[]) {
-      const optRows = await sql`SELECT * FROM "QuestionOption" WHERE question_id = ${qu.id} ORDER BY id`;
-      questions.push({ ...rowToCamel(qu)!, options: rowsToCamel(optRows as Record<string, unknown>[]) });
-    }
-    quizzes.push({ ...rowToCamel(q)!, questions });
+  const quizzesRaw = quizRows as Record<string, unknown>[];
+  const quizIds = quizzesRaw.map((q) => String(q.id));
+  const questionRows =
+    quizIds.length > 0
+      ? ((await sql(
+          `SELECT * FROM "Question" WHERE quiz_id = ANY($1::text[]) ORDER BY "order" ASC`,
+          [quizIds],
+        )) as Record<string, unknown>[])
+      : [];
+  const questionIds = questionRows.map((q) => String(q.id));
+  const optionRows =
+    questionIds.length > 0
+      ? ((await sql(
+          `SELECT * FROM "QuestionOption" WHERE question_id = ANY($1::text[]) ORDER BY id`,
+          [questionIds],
+        )) as Record<string, unknown>[])
+      : [];
+
+  const optionsByQuestion = new Map<string, Record<string, unknown>[]>();
+  for (const opt of optionRows) {
+    const qid = String(opt.question_id);
+    const list = optionsByQuestion.get(qid) ?? [];
+    list.push(rowToCamel(opt)!);
+    optionsByQuestion.set(qid, list);
   }
+  const questionsByQuiz = new Map<string, Array<Record<string, unknown> & { options: Record<string, unknown>[] }>>();
+  for (const qu of questionRows) {
+    const quizId = String(qu.quiz_id);
+    const list = questionsByQuiz.get(quizId) ?? [];
+    list.push({
+      ...rowToCamel(qu)!,
+      options: optionsByQuestion.get(String(qu.id)) ?? [],
+    });
+    questionsByQuiz.set(quizId, list);
+  }
+
+  const quizzes = quizzesRaw.map((q) => ({
+    ...rowToCamel(q)!,
+    questions: questionsByQuiz.get(String(q.id)) ?? [],
+  }));
 
   return {
     course: rowToCamel(courseRow)!,
@@ -3668,20 +3749,35 @@ export async function getQuizById(quizId: string): Promise<{
   if (!quizRow) return null;
 
   const courseId = quizRow.course_id as string;
-  const courseRows = await sql`SELECT * FROM "Course" WHERE id = ${courseId} LIMIT 1`;
+  const [courseRows, questionRows] = await Promise.all([
+    sql`SELECT * FROM "Course" WHERE id = ${courseId} LIMIT 1`,
+    sql`SELECT * FROM "Question" WHERE quiz_id = ${quizId} ORDER BY "order" ASC`,
+  ]);
   const courseRow = courseRows[0] as Record<string, unknown> | undefined;
   if (!courseRow) return null;
 
-  const questionRows = await sql`SELECT * FROM "Question" WHERE quiz_id = ${quizId} ORDER BY "order" ASC`;
-  const questions: Array<Record<string, unknown> & { options: Record<string, unknown>[] }> = [];
+  const questionsRaw = questionRows as Record<string, unknown>[];
+  const questionIds = questionsRaw.map((q) => String(q.id));
+  const optionRows =
+    questionIds.length > 0
+      ? ((await sql(
+          `SELECT * FROM "QuestionOption" WHERE question_id = ANY($1::text[]) ORDER BY id`,
+          [questionIds],
+        )) as Record<string, unknown>[])
+      : [];
 
-  for (const q of questionRows as Record<string, unknown>[]) {
-    const optRows = await sql`SELECT * FROM "QuestionOption" WHERE question_id = ${q.id} ORDER BY id`;
-    questions.push({
-      ...rowToCamel(q)!,
-      options: rowsToCamel(optRows as Record<string, unknown>[]),
-    } as Record<string, unknown> & { options: Record<string, unknown>[] });
+  const optionsByQuestion = new Map<string, Record<string, unknown>[]>();
+  for (const opt of optionRows) {
+    const qid = String(opt.question_id);
+    const list = optionsByQuestion.get(qid) ?? [];
+    list.push(rowToCamel(opt)!);
+    optionsByQuestion.set(qid, list);
   }
+
+  const questions = questionsRaw.map((q) => ({
+    ...rowToCamel(q)!,
+    options: optionsByQuestion.get(String(q.id)) ?? [],
+  })) as Array<Record<string, unknown> & { options: Record<string, unknown>[] }>;
 
   return {
     quiz: rowToCamel(quizRow)!,
@@ -3690,12 +3786,18 @@ export async function getQuizById(quizId: string): Promise<{
   };
 }
 
-export async function createQuiz(data: { course_id: string; title: string; order: number; time_limit_minutes?: number | null }): Promise<Quiz> {
+export async function createQuiz(data: {
+  course_id: string;
+  title: string;
+  title_ar?: string | null;
+  order: number;
+  time_limit_minutes?: number | null;
+}): Promise<Quiz> {
   const id = generateId();
   const runInsert = async () => {
     await sql`
-      INSERT INTO "Quiz" (id, course_id, title, "order", time_limit_minutes)
-      VALUES (${id}, ${data.course_id}, ${data.title}, ${data.order}, ${data.time_limit_minutes ?? null})
+      INSERT INTO "Quiz" (id, course_id, title, title_ar, "order", time_limit_minutes)
+      VALUES (${id}, ${data.course_id}, ${data.title}, ${data.title_ar ?? null}, ${data.order}, ${data.time_limit_minutes ?? null})
     `;
   };
   try {
@@ -3703,9 +3805,10 @@ export async function createQuiz(data: { course_id: string; title: string; order
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const code = typeof (err as { code?: string })?.code === "string" ? (err as { code: string }).code : "";
-    const isMissingColumn = code === "42703" || /time_limit_minutes|does not exist|column.*not exist/i.test(msg);
+    const isMissingColumn = code === "42703" || /time_limit_minutes|title_ar|does not exist|column.*not exist/i.test(msg);
     if (isMissingColumn) {
       await sql`ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS time_limit_minutes INT`;
+      await sql`ALTER TABLE "Quiz" ADD COLUMN IF NOT EXISTS title_ar TEXT`;
       await runInsert();
     } else {
       throw err;
@@ -4475,7 +4578,7 @@ export async function getQuizAttemptsByUserId(userId: string): Promise<
   }));
 }
 
-export async function getAllQuizAttemptsForAdmin(): Promise<
+export async function getAllQuizAttemptsForAdmin(limit = 500): Promise<
   Array<{
     userId: string;
     userName: string;
@@ -4489,6 +4592,7 @@ export async function getAllQuizAttemptsForAdmin(): Promise<
     createdAt: Date;
   }>
 > {
+  const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 2000);
   const rows = await sql`
     SELECT u.id as user_id, u.name as user_name, u.email as user_email,
            qa.quiz_id, q.title as quiz_title, c.id as course_id, c.title as course_title,
@@ -4498,6 +4602,7 @@ export async function getAllQuizAttemptsForAdmin(): Promise<
     JOIN "Quiz" q ON q.id = qa.quiz_id
     JOIN "Course" c ON c.id = q.course_id
     ORDER BY qa.created_at DESC
+    LIMIT ${safeLimit}
   `;
   return (rows as Record<string, unknown>[]).map((r) => ({
     userId: r.user_id as string,
@@ -4745,6 +4850,47 @@ export async function getEnrollmentsWithCourseByUserId(userId: string): Promise<
       slug: r.c_slug,
     },
   })) as Array<Enrollment & { course: { id: string; title: string; titleAr: string | null; slug: string } }>;
+}
+
+/** تسجيلات عدة طلاب دفعة واحدة (بدل N استعلام في صفحة الإحصائيات) */
+export async function getEnrollmentsWithCourseByUserIds(
+  userIds: string[],
+): Promise<Map<string, Array<Enrollment & { course: { id: string; title: string; titleAr: string | null; slug: string } }>>> {
+  const uniq = [...new Set(userIds.map((id) => String(id).trim()).filter(Boolean))];
+  const map = new Map<
+    string,
+    Array<Enrollment & { course: { id: string; title: string; titleAr: string | null; slug: string } }>
+  >();
+  for (const id of uniq) map.set(id, []);
+  if (uniq.length === 0) return map;
+
+  const rows = (await sql(
+    `SELECT e.*, c.id as c_id, c.title as c_title, c.title_ar as c_title_ar, c.slug as c_slug
+     FROM "Enrollment" e
+     JOIN "Course" c ON c.id = e.course_id
+     WHERE e.user_id = ANY($1::text[])
+     ORDER BY e.enrolled_at DESC`,
+    [uniq],
+  )) as Record<string, unknown>[];
+
+  for (const r of rows) {
+    const uid = String(r.user_id);
+    const list = map.get(uid) ?? [];
+    list.push({
+      id: r.id,
+      user_id: r.user_id,
+      course_id: r.course_id,
+      enrolled_at: r.enrolled_at,
+      course: {
+        id: r.c_id,
+        title: r.c_title,
+        titleAr: r.c_title_ar,
+        slug: r.c_slug,
+      },
+    } as Enrollment & { course: { id: string; title: string; titleAr: string | null; slug: string } });
+    map.set(uid, list);
+  }
+  return map;
 }
 
 /** دورات الطالب المسجّل فيها — بنفس شكل الكورسات في الصفحة الرئيسية (للعرض كبطاقات) */
@@ -5191,13 +5337,102 @@ export async function getPassedQuizIdsForCourse(userId: string, courseId: string
     if (row.quiz_id) ids.add(String(row.quiz_id));
   }
 
-  if (gamificationSchemaAvailable) {
-    for (const quizId of ids) {
-      await insertQuizPassIfNotExists(userId, quizId, courseId);
+  // Backfill QuizCompletion in one statement (was N inserts on every progress read)
+  if (gamificationSchemaAvailable && ids.size > 0) {
+    const quizIdList = [...ids];
+    try {
+      await sql(
+        `INSERT INTO "QuizCompletion" (id, user_id, quiz_id, course_id, completed_at)
+         SELECT 'c' || substr(md5(random()::text || q.quiz_id), 1, 24), $1, q.quiz_id, $2, NOW()
+         FROM unnest($3::text[]) AS q(quiz_id)
+         ON CONFLICT (user_id, quiz_id) DO NOTHING`,
+        [userId, courseId, quizIdList],
+      );
+    } catch {
+      // non-fatal — progress percent still uses the in-memory id set
     }
   }
 
   return [...ids];
+}
+
+/**
+ * نسب إنجاز عدة كورسات لطالب واحد بعدد ثابت من الاستعلامات (بدل N×getCourseProgress).
+ */
+export async function getCourseProgressPercentsForUser(
+  userId: string,
+  courseIds: string[],
+): Promise<Record<string, number>> {
+  const uniq = [...new Set(courseIds.map((id) => String(id).trim()).filter(Boolean))];
+  const out: Record<string, number> = {};
+  if (uniq.length === 0) return out;
+  for (const id of uniq) out[id] = 0;
+
+  await ensureGamificationSchema();
+
+  const [lessonTotalsRaw, quizTotalsRaw, completedLessonRaw, completionQuizRaw, attemptQuizRaw] =
+    await Promise.all([
+      sql(
+        `SELECT course_id, COUNT(*)::int AS cnt FROM "Lesson" WHERE course_id = ANY($1::text[]) GROUP BY course_id`,
+        [uniq],
+      ),
+      sql(
+        `SELECT course_id, COUNT(*)::int AS cnt FROM "Quiz" WHERE course_id = ANY($1::text[]) GROUP BY course_id`,
+        [uniq],
+      ),
+      gamificationSchemaAvailable
+        ? sql(
+            `SELECT course_id, COUNT(*)::int AS cnt FROM "LessonCompletion"
+             WHERE user_id = $1 AND course_id = ANY($2::text[]) GROUP BY course_id`,
+            [userId, uniq],
+          )
+        : Promise.resolve([] as Record<string, unknown>[]),
+      gamificationSchemaAvailable
+        ? sql(
+            `SELECT course_id, quiz_id FROM "QuizCompletion"
+             WHERE user_id = $1 AND course_id = ANY($2::text[])`,
+            [userId, uniq],
+          )
+        : Promise.resolve([] as Record<string, unknown>[]),
+      sql(
+        `SELECT DISTINCT q.course_id, qa.quiz_id
+         FROM "QuizAttempt" qa
+         JOIN "Quiz" q ON q.id = qa.quiz_id
+         WHERE qa.user_id = $1
+           AND q.course_id = ANY($2::text[])
+           AND qa.total_questions > 0
+           AND (qa.score::float / qa.total_questions::float) >= 0.6`,
+        [userId, uniq],
+      ),
+    ]);
+
+  const lessonTotals = lessonTotalsRaw as { course_id: string; cnt: number }[];
+  const quizTotals = quizTotalsRaw as { course_id: string; cnt: number }[];
+  const completedLessonRows = completedLessonRaw as { course_id: string; cnt: number }[];
+  const completionQuizRows = completionQuizRaw as { course_id: string; quiz_id: string }[];
+  const attemptQuizRows = attemptQuizRaw as { course_id: string; quiz_id: string }[];
+
+  const lessonsTotalBy = new Map(lessonTotals.map((r) => [String(r.course_id), Number(r.cnt)]));
+  const quizzesTotalBy = new Map(quizTotals.map((r) => [String(r.course_id), Number(r.cnt)]));
+  const lessonsDoneBy = new Map(completedLessonRows.map((r) => [String(r.course_id), Number(r.cnt)]));
+  const passedByCourse = new Map<string, Set<string>>();
+  for (const row of [...completionQuizRows, ...attemptQuizRows]) {
+    const cid = String(row.course_id);
+    const set = passedByCourse.get(cid) ?? new Set();
+    set.add(String(row.quiz_id));
+    passedByCourse.set(cid, set);
+  }
+
+  for (const courseId of uniq) {
+    const lessonsTotal = lessonsTotalBy.get(courseId) ?? 0;
+    const quizzesTotal = quizzesTotalBy.get(courseId) ?? 0;
+    const lessonsDone = lessonsDoneBy.get(courseId) ?? 0;
+    const quizzesPassed = passedByCourse.get(courseId)?.size ?? 0;
+    const totalUnits = lessonsTotal + quizzesTotal;
+    const doneUnits = lessonsDone + quizzesPassed;
+    out[courseId] = totalUnits > 0 ? Math.round((doneUnits / totalUnits) * 100) : 0;
+  }
+  return out;
 }
 
 export async function getQuizzesByCourseId(courseId: string): Promise<Array<{ id: string }>> {
@@ -5848,4 +6083,177 @@ export async function searchStudentsForReferral(query: string, limit = 10): Prom
     name: String(row.name ?? ""),
     email: String(row.email ?? ""),
   }));
+}
+
+// ----- Elhawy World videos -----
+
+let elhawyWorldSchemaEnsured = false;
+
+async function ensureElhawyWorldVideosSchema(): Promise<void> {
+  if (elhawyWorldSchemaEnsured) return;
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS "ElhawyWorldVideo" (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        title_en TEXT,
+        description TEXT,
+        description_en TEXT,
+        youtube_url TEXT NOT NULL,
+        cover_image_url TEXT,
+        is_published BOOLEAN NOT NULL DEFAULT TRUE,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS "ElhawyWorldVideo_published_sort_idx"
+      ON "ElhawyWorldVideo"(is_published, sort_order ASC, created_at DESC)
+    `;
+    elhawyWorldSchemaEnsured = true;
+  } catch {
+    /* DDL غير متاح */
+  }
+}
+
+export type ElhawyWorldVideoRow = {
+  id: string;
+  title: string;
+  titleEn: string | null;
+  description: string | null;
+  descriptionEn: string | null;
+  youtubeUrl: string;
+  coverImageUrl: string | null;
+  isPublished: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function mapElhawyWorldVideo(r: Record<string, unknown>): ElhawyWorldVideoRow {
+  return {
+    id: String(r.id),
+    title: String(r.title ?? ""),
+    titleEn: r.title_en != null ? String(r.title_en) : null,
+    description: r.description != null ? String(r.description) : null,
+    descriptionEn: r.description_en != null ? String(r.description_en) : null,
+    youtubeUrl: String(r.youtube_url ?? ""),
+    coverImageUrl: r.cover_image_url != null ? String(r.cover_image_url) : null,
+    isPublished: Boolean(r.is_published),
+    sortOrder: Number(r.sort_order ?? 0),
+    createdAt: String(r.created_at ?? ""),
+    updatedAt: String(r.updated_at ?? ""),
+  };
+}
+
+export async function listElhawyWorldVideosAll(): Promise<ElhawyWorldVideoRow[]> {
+  await ensureElhawyWorldVideosSchema();
+  const rows = await sql`
+    SELECT * FROM "ElhawyWorldVideo"
+    ORDER BY sort_order ASC, created_at DESC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapElhawyWorldVideo);
+}
+
+export async function listElhawyWorldVideosPublished(): Promise<ElhawyWorldVideoRow[]> {
+  await ensureElhawyWorldVideosSchema();
+  const rows = await sql`
+    SELECT * FROM "ElhawyWorldVideo"
+    WHERE is_published = TRUE
+    ORDER BY sort_order ASC, created_at DESC
+  `;
+  return (rows as Record<string, unknown>[]).map(mapElhawyWorldVideo);
+}
+
+export async function getElhawyWorldVideoById(id: string): Promise<ElhawyWorldVideoRow | null> {
+  await ensureElhawyWorldVideosSchema();
+  const rows = await sql`SELECT * FROM "ElhawyWorldVideo" WHERE id = ${id} LIMIT 1`;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  return row ? mapElhawyWorldVideo(row) : null;
+}
+
+export async function createElhawyWorldVideo(data: {
+  title: string;
+  titleEn?: string | null;
+  description?: string | null;
+  descriptionEn?: string | null;
+  youtubeUrl: string;
+  coverImageUrl?: string | null;
+  isPublished?: boolean;
+  sortOrder?: number;
+}): Promise<ElhawyWorldVideoRow> {
+  await ensureElhawyWorldVideosSchema();
+  const id = generateId();
+  await sql`
+    INSERT INTO "ElhawyWorldVideo" (
+      id, title, title_en, description, description_en,
+      youtube_url, cover_image_url, is_published, sort_order, created_at, updated_at
+    ) VALUES (
+      ${id},
+      ${data.title.trim()},
+      ${data.titleEn?.trim() || null},
+      ${data.description?.trim() || null},
+      ${data.descriptionEn?.trim() || null},
+      ${data.youtubeUrl.trim()},
+      ${data.coverImageUrl?.trim() || null},
+      ${data.isPublished !== false},
+      ${data.sortOrder ?? 0},
+      NOW(),
+      NOW()
+    )
+  `;
+  const created = await getElhawyWorldVideoById(id);
+  if (!created) throw new Error("ELHAWY_WORLD_VIDEO_CREATE_FAILED");
+  return created;
+}
+
+export async function updateElhawyWorldVideo(
+  id: string,
+  data: Partial<{
+    title: string;
+    titleEn: string | null;
+    description: string | null;
+    descriptionEn: string | null;
+    youtubeUrl: string;
+    coverImageUrl: string | null;
+    isPublished: boolean;
+    sortOrder: number;
+  }>,
+): Promise<ElhawyWorldVideoRow | null> {
+  await ensureElhawyWorldVideosSchema();
+  const existing = await getElhawyWorldVideoById(id);
+  if (!existing) return null;
+
+  const title = data.title?.trim() ?? existing.title;
+  const titleEn = data.titleEn !== undefined ? data.titleEn?.trim() || null : existing.titleEn;
+  const description = data.description !== undefined ? data.description?.trim() || null : existing.description;
+  const descriptionEn =
+    data.descriptionEn !== undefined ? data.descriptionEn?.trim() || null : existing.descriptionEn;
+  const youtubeUrl = data.youtubeUrl?.trim() ?? existing.youtubeUrl;
+  const coverImageUrl =
+    data.coverImageUrl !== undefined ? data.coverImageUrl?.trim() || null : existing.coverImageUrl;
+  const isPublished = data.isPublished ?? existing.isPublished;
+  const sortOrder = data.sortOrder ?? existing.sortOrder;
+
+  await sql`
+    UPDATE "ElhawyWorldVideo"
+    SET title = ${title},
+        title_en = ${titleEn},
+        description = ${description},
+        description_en = ${descriptionEn},
+        youtube_url = ${youtubeUrl},
+        cover_image_url = ${coverImageUrl},
+        is_published = ${isPublished},
+        sort_order = ${sortOrder},
+        updated_at = NOW()
+    WHERE id = ${id}
+  `;
+  return getElhawyWorldVideoById(id);
+}
+
+export async function deleteElhawyWorldVideo(id: string): Promise<boolean> {
+  await ensureElhawyWorldVideosSchema();
+  const rows = await sql`DELETE FROM "ElhawyWorldVideo" WHERE id = ${id} RETURNING id`;
+  return rows.length > 0;
 }

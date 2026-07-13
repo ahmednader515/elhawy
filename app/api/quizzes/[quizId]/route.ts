@@ -85,6 +85,7 @@ export async function GET(
     const payload = {
       id: result.quiz.id,
       title: result.quiz.title,
+      titleAr: result.quiz.titleAr ?? result.quiz.title_ar ?? null,
       courseId: result.quiz.courseId ?? result.quiz.course_id,
       order: result.quiz.order,
       timeLimitMinutes,

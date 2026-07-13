@@ -3,8 +3,8 @@
 import { SessionProvider as NextAuthSessionProvider, useSession } from "next-auth/react";
 import { ReactNode, useEffect, useState } from "react";
 
-/** refetchInterval: إعادة التحقق من الجلسة كل ٥ ثوانٍ حتى يُسجّل خروج الجهاز الآخر فوراً دون حاجة لريفرش */
-const SESSION_REFETCH_INTERVAL = 5;
+/** إعادة التحقق من الجلسة دورياً لاكتشاف تسجيل الدخول من جهاز آخر (بدون إغراق Neon) */
+const SESSION_REFETCH_INTERVAL = 60;
 
 function SessionRefetchWhenVisible() {
   const { data: session, update } = useSession();

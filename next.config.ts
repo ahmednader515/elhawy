@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+function r2PublicHostname(): string | null {
+  const raw = process.env.R2_PUBLIC_URL?.trim();
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+const r2Host = r2PublicHostname();
+
 const nextConfig: NextConfig = {
   images: {
     /** أحجام أصغر من الافتراضي (حتى 3840px) لتسريع التحويل وتحميل الهيرو */
@@ -10,6 +22,15 @@ const nextConfig: NextConfig = {
         hostname: "*.r2.dev",
         pathname: "/**",
       },
+      ...(r2Host
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: r2Host,
+              pathname: "/**",
+            },
+          ]
+        : []),
     ],
   },
   serverExternalPackages: ["@neondatabase/serverless"],
@@ -22,21 +43,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/",
+        source: "/images/:path*",
         headers: [
-          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
       {
-        source: "/courses",
+        source: "/intro/:path*",
         headers: [
-          { key: "Cache-Control", value: "private, no-store, max-age=0" },
-        ],
-      },
-      {
-        source: "/courses/:path*",
-        headers: [
-          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
         ],
       },
     ];

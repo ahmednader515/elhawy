@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddBalanceButton } from "./AddBalanceButton";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
 import { useDashboardTable } from "@/lib/i18n/dashboard-table";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
 
 type Course = { id: string; title: string; titleAr: string | null; slug: string };
 
@@ -57,6 +58,7 @@ export function StudentsList({
 }) {
   void isAdmin;
   const t = useT();
+  const locale = useLocale();
   const { dir, thClass } = useDashboardTable();
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -325,7 +327,7 @@ export function StudentsList({
                       key={e.courseId}
                       className="flex items-center justify-between rounded border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
                     >
-                      <span className="text-sm">{e.course.titleAr ?? e.course.title}</span>
+                      <span className="text-sm">{pickLocalizedText(locale, e.course.titleAr, e.course.title)}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveCourse(e.courseId)}
@@ -354,7 +356,7 @@ export function StudentsList({
                       </option>
                       {availableToAdd.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.titleAr ?? c.title}
+                          {pickLocalizedText(locale, c.titleAr, c.title)}
                         </option>
                       ))}
                     </select>

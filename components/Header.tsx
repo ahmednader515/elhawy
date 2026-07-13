@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import type { UserRole } from "@/lib/types";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useT, useLocalizedEnumValue } from "@/components/LocaleProvider";
 import { StudentNavbarPoints } from "@/components/StudentNavbarPoints";
 
@@ -118,6 +119,9 @@ export function Header({
             ) : null}
             {displayName ? <span className="min-w-0 truncate">{displayName}</span> : null}
           </Link>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <LanguageToggle />
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 pb-2 sm:hidden">
@@ -177,6 +181,7 @@ export function Header({
           {displayName ? <span className="min-w-0 truncate">{displayName}</span> : null}
         </Link>
         <nav className="flex flex-shrink-0 items-center gap-2 sm:gap-7">
+          <LanguageToggle />
           <Link
             href="/"
             className="hidden text-base font-medium text-[var(--color-muted)] transition hover:text-[var(--color-foreground)] sm:inline-block"

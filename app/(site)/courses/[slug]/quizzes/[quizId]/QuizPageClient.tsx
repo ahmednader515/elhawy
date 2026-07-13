@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { QuizTake } from "./QuizTake";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { pickLocalizedText } from "@/lib/i18n/localized-field";
 
 export type QuizApiPayload = {
   id: string;
   title: string;
+  titleAr?: string | null;
   courseId: string;
   order: number;
   timeLimitMinutes: number | null;
@@ -37,6 +39,7 @@ export function QuizPageClient({
   passedQuizIds?: string[];
 }) {
   const t = useT();
+  const locale = useLocale();
   const [quiz, setQuiz] = useState<QuizApiPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +109,8 @@ export function QuizPageClient({
     );
   }
 
-  const courseTitle = quiz.course.titleAr ?? quiz.course.title;
+  const courseTitle = pickLocalizedText(locale, quiz.course.titleAr, quiz.course.title);
+  const quizTitle = pickLocalizedText(locale, quiz.titleAr, quiz.title);
   const courseHref = quiz.course.slug
     ? `/courses/${encodeURIComponent(quiz.course.slug.trim())}`
     : `/courses/${quiz.course.id}`;
@@ -119,7 +123,7 @@ export function QuizPageClient({
           ← {t("courses.backToCourse", "Back to")} {courseTitle}
         </Link>
         <div className="mt-4 rounded-[var(--radius-card)] border border-amber-500/50 bg-amber-500/10 p-6">
-          <h1 className="text-xl font-bold text-[var(--color-foreground)]">{quiz.title}</h1>
+          <h1 className="text-xl font-bold text-[var(--color-foreground)]">{quizTitle}</h1>
           <p className="mt-2 text-[var(--color-foreground)]">
             {t("quiz.attemptsLimitReached", "You have reached the allowed attempts for this quiz in this course.")}
             {q.maxQuizAttempts != null && <span className="mr-1">({t("quiz.limitLabel", "Limit:")} {q.maxQuizAttempts} {t("quiz.attemptsLabel", "attempts")})</span>}
@@ -136,7 +140,7 @@ export function QuizPageClient({
       </Link>
       <h1 className="mt-4 text-2xl font-bold text-[var(--color-foreground)]">
         {isQuizPassed ? <span className="ml-2 text-amber-500/90" aria-hidden>✦</span> : null}
-        {quiz.title}
+        {quizTitle}
       </h1>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
         {quiz.questions.length} {t("courses.questions", "questions")}

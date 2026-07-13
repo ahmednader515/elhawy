@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCourseById, getHomepageSettings, updateHomepageSettings } from "@/lib/db";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { normalizeHeroHex } from "@/lib/hero-bg";
 import type { PlatformDetailsItem, PlatformDetailsPresetIcon, PlatformNewsItem } from "@/lib/types";
 import { PLATFORM_DETAILS_PRESET_ICON_OPTIONS } from "@/lib/platform-details";
@@ -685,6 +687,7 @@ export async function PUT(request: NextRequest) {
               : null)
           : undefined,
     });
+    revalidateTag(CACHE_TAGS.homepageSettings, "max");
     return NextResponse.json({ success: true });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
