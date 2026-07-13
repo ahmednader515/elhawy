@@ -68,10 +68,12 @@ export async function POST(request: NextRequest) {
   }
 
   const titleAr = (body.titleAr ?? body.title)?.trim();
+  const titleEn = (body.titleEn ?? body.title)?.trim();
   const slug = body.slug?.trim();
   const descriptionAr = (body.descriptionAr ?? body.description)?.trim();
-  if (!titleAr || !slug || !descriptionAr) {
-    return NextResponse.json({ error: "العنوان والوصف بالعربية مطلوبة" }, { status: 400 });
+  const descriptionEn = (body.descriptionEn ?? "").trim();
+  if (!titleAr || !titleEn || !slug || !descriptionAr || !descriptionEn) {
+    return NextResponse.json({ error: "العنوان والوصف بالعربية والإنجليزية مطلوبة" }, { status: 400 });
   }
 
   const exists = await courseExistsBySlug(slug.trim());
@@ -81,16 +83,19 @@ export async function POST(request: NextRequest) {
 
   let categoryId: string | null = null;
   const catNameAr = (body.categoryNameAr ?? body.categoryName)?.trim();
+  const catNameEn = (body.categoryNameEn ?? body.categoryName)?.trim();
   const role = session.user.role;
-  if (catNameAr) {
-    let cat = await findCategoryByNameForDashboard(catNameAr, session.user.id, role);
+  if (catNameAr || catNameEn) {
+    let cat =
+      (catNameAr ? await findCategoryByNameForDashboard(catNameAr, session.user.id, role) : null) ??
+      (catNameEn ? await findCategoryByNameForDashboard(catNameEn, session.user.id, role) : null);
     if (!cat) {
-      const slugBase = catNameAr || "cat";
+      const slugBase = (catNameEn || catNameAr || "cat");
       const slugCat = slugBase.toLowerCase().replace(/\s+/g, "-").replace(/[^\w\u0600-\u06FF-]+/g, "") || "cat";
       const uniqueSlug = slugCat + "-" + Date.now();
       cat = await createCategory({
-        name: catNameAr,
-        name_ar: catNameAr,
+        name: catNameEn || catNameAr || slugBase,
+        name_ar: catNameAr || catNameEn || slugBase,
         slug: uniqueSlug,
         created_by_id: session.user.id,
       });
@@ -108,13 +113,13 @@ export async function POST(request: NextRequest) {
   let course;
   try {
     course = await createCourse({
-      title: titleAr,
+      title: titleEn,
       title_ar: titleAr,
       slug,
       description: descriptionAr,
-      description_en: null,
+      description_en: descriptionEn,
       short_desc: (body.shortDescAr ?? body.shortDesc)?.trim() || null,
-      short_desc_en: null,
+      short_desc_en: (body.shortDescEn ?? "").trim() || null,
       image_url: body.imageUrl?.trim() || null,
       price: body.price ?? 0,
       is_published: true,

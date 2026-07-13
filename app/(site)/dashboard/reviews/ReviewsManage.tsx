@@ -8,8 +8,10 @@ import { fillMessage } from "@/lib/i18n/interpolate";
 type ReviewRow = {
   id: string;
   text: string;
+  textEn?: string | null;
   authorName: string;
   authorTitle: string | null;
+  authorTitleEn?: string | null;
   avatarLetter: string | null;
   imageUrl: string | null;
   order: number;
@@ -28,8 +30,10 @@ export function ReviewsManage() {
 
   const [form, setForm] = useState({
     text: "",
+    textEn: "",
     authorName: "",
     authorTitle: "",
+    authorTitleEn: "",
     avatarLetter: "",
     imageUrl: "",
   });
@@ -38,8 +42,10 @@ export function ReviewsManage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     text: "",
+    textEn: "",
     authorName: "",
     authorTitle: "",
+    authorTitleEn: "",
     avatarLetter: "",
     imageUrl: "",
   });
@@ -119,10 +125,10 @@ export function ReviewsManage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: form.text.trim(),
-          textEn: null,
+          textEn: form.textEn.trim() || null,
           authorName: form.authorName.trim(),
           authorTitle: form.authorTitle.trim() || null,
-          authorTitleEn: null,
+          authorTitleEn: form.authorTitleEn.trim() || null,
           avatarLetter: form.avatarLetter.trim() || null,
           imageUrl: form.imageUrl.trim() || null,
         }),
@@ -131,8 +137,10 @@ export function ReviewsManage() {
       if (!res.ok) throw new Error(data.error ?? t(`${Rm}.addFailed`));
       setForm({
         text: "",
+        textEn: "",
         authorName: "",
         authorTitle: "",
+        authorTitleEn: "",
         avatarLetter: "",
         imageUrl: "",
       });
@@ -150,8 +158,10 @@ export function ReviewsManage() {
     setEditingId(r.id);
     setEditForm({
       text: r.text,
+      textEn: r.textEn ?? "",
       authorName: r.authorName,
       authorTitle: r.authorTitle ?? "",
+      authorTitleEn: r.authorTitleEn ?? "",
       avatarLetter: r.avatarLetter ?? "",
       imageUrl: r.imageUrl ?? "",
     });
@@ -178,10 +188,10 @@ export function ReviewsManage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: editForm.text.trim(),
-          textEn: null,
+          textEn: editForm.textEn.trim() || null,
           authorName: editForm.authorName.trim(),
           authorTitle: editForm.authorTitle.trim() || null,
-          authorTitleEn: null,
+          authorTitleEn: editForm.authorTitleEn.trim() || null,
           avatarLetter: editForm.avatarLetter.trim() || null,
           imageUrl: editForm.imageUrl.trim() || null,
         }),
@@ -247,6 +257,14 @@ export function ReviewsManage() {
               placeholder={t(`${Rm}.placeholderReviewText`)}
               required
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{t(`${Rm}.labelReviewTextEn`)}</label>
+            <textarea
+              value={form.textEn}
+              onChange={(e) => setForm((f) => ({ ...f, textEn: e.target.value }))}
+              rows={2}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={t(`${Rm}.placeholderReviewTextEn`)}
+            />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -268,6 +286,14 @@ export function ReviewsManage() {
                 onChange={(e) => setForm((f) => ({ ...f, authorTitle: e.target.value }))}
                 className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
                 placeholder={t(`${Rm}.placeholderAuthorTitle`)}
+              />
+              <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{t(`${Rm}.labelAuthorTitleEnOptional`)}</label>
+              <input
+                type="text"
+                value={form.authorTitleEn}
+                onChange={(e) => setForm((f) => ({ ...f, authorTitleEn: e.target.value }))}
+                className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+                placeholder={t(`${Rm}.placeholderAuthorTitleEn`)}
               />
             </div>
           </div>
@@ -351,6 +377,13 @@ export function ReviewsManage() {
                       className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm"
                       required
                     />
+                    <textarea
+                      value={editForm.textEn}
+                      onChange={(e) => setEditForm((f) => ({ ...f, textEn: e.target.value }))}
+                      rows={2}
+                      placeholder={t(`${Rm}.editPlaceholderTextEn`)}
+                      className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm"
+                    />
                     <div className="flex flex-wrap gap-3">
                       <input
                         type="text"
@@ -365,6 +398,13 @@ export function ReviewsManage() {
                         value={editForm.authorTitle}
                         onChange={(e) => setEditForm((f) => ({ ...f, authorTitle: e.target.value }))}
                         placeholder={t(`${Rm}.editPlaceholderTitle`)}
+                        className="rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-1.5 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.authorTitleEn}
+                        onChange={(e) => setEditForm((f) => ({ ...f, authorTitleEn: e.target.value }))}
+                        placeholder={t(`${Rm}.editPlaceholderTitleEn`)}
                         className="rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-1.5 text-sm"
                       />
                       <input

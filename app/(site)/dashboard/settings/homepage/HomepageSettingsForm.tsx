@@ -124,13 +124,17 @@ export function HomepageSettingsForm({
     heroTemplate: ((initialSettings.heroTemplate as HeroTemplate) || "classic") as HeroTemplate,
     teacherImageUrl: initialSettings.teacherImageUrl ?? "",
     heroTitle: initialSettings.heroTitle ?? "",
+    heroTitleEn: initialSettings.heroTitleEn ?? "",
     heroSlogan: initialSettings.heroSlogan ?? "",
+    heroSloganEn: initialSettings.heroSloganEn ?? "",
     platformName: initialSettings.platformName ?? "",
+    platformNameEn: initialSettings.platformNameEn ?? "",
     headerLogoUrl: initialSettings.headerLogoUrl ?? "",
     primaryColor: initialSettings.primaryColor ?? "",
     youtubeUrl: initialSettings.youtubeUrl ?? "",
     linkedinUrl: initialSettings.linkedinUrl ?? "",
     pageTitle: initialSettings.pageTitle ?? "",
+    pageTitleEn: initialSettings.pageTitleEn ?? "",
     whatsappUrl: initialSettings.whatsappUrl ?? "",
     facebookUrl: initialSettings.facebookUrl ?? "",
     telegramUrl: initialSettings.telegramUrl ?? "",
@@ -140,7 +144,9 @@ export function HomepageSettingsForm({
     teamFacebookUrl: initialSettings.teamFacebookUrl ?? "",
     teamTelegramUrl: initialSettings.teamTelegramUrl ?? "",
     socialRightLabel: initialSettings.socialRightLabel ?? "",
+    socialRightLabelEn: initialSettings.socialRightLabelEn ?? "",
     socialLeftLabel: initialSettings.socialLeftLabel ?? "",
+    socialLeftLabelEn: initialSettings.socialLeftLabelEn ?? "",
     socialLeftEnabled: initialSettings.socialLeftEnabled ?? true,
     heroBgPreset: (initialSettings.heroBgPreset as HeroBgPreset) || "navy",
     heroBgUseCustom: initialHeroBg.useCustom,
@@ -163,7 +169,9 @@ export function HomepageSettingsForm({
       Math.min(20, Math.max(2, Math.round((initialSettings.heroSliderIntervalMs ?? 5000) / 1000))),
     ),
     hero3Title: initialSettings.hero3Title ?? "",
+    hero3TitleEn: initialSettings.hero3TitleEn ?? "",
     hero3Subtitle: initialSettings.hero3Subtitle ?? "",
+    hero3SubtitleEn: initialSettings.hero3SubtitleEn ?? "",
     hero3PhoneImageUrl: initialSettings.hero3PhoneImageUrl ?? "",
     hero3PhoneBgColor: initialSettings.hero3PhoneBgColor ?? "#FACC15",
     hero3StoreBadge1ImageUrl: initialSettings.hero3StoreBadge1ImageUrl ?? "",
@@ -171,20 +179,32 @@ export function HomepageSettingsForm({
     hero3StoreBadge2ImageUrl: initialSettings.hero3StoreBadge2ImageUrl ?? "",
     hero3StoreBadge2Link: initialSettings.hero3StoreBadge2Link ?? "",
     footerTitle: initialSettings.footerTitle ?? "",
+    footerTitleEn: initialSettings.footerTitleEn ?? "",
     footerTagline: initialSettings.footerTagline ?? "",
+    footerTaglineEn: initialSettings.footerTaglineEn ?? "",
     footerCopyright: initialSettings.footerCopyright ?? "",
+    footerCopyrightEn: initialSettings.footerCopyrightEn ?? "",
     reviewsSectionTitle: initialSettings.reviewsSectionTitle ?? "",
+    reviewsSectionTitleEn: initialSettings.reviewsSectionTitleEn ?? "",
     reviewsSectionSubtitle: initialSettings.reviewsSectionSubtitle ?? "",
+    reviewsSectionSubtitleEn: initialSettings.reviewsSectionSubtitleEn ?? "",
     ctaBadgeText: initialSettings.ctaBadgeText ?? "",
+    ctaBadgeTextEn: initialSettings.ctaBadgeTextEn ?? "",
     ctaTitle: initialSettings.ctaTitle ?? "",
+    ctaTitleEn: initialSettings.ctaTitleEn ?? "",
     ctaDescription: initialSettings.ctaDescription ?? "",
+    ctaDescriptionEn: initialSettings.ctaDescriptionEn ?? "",
     ctaButtonText: initialSettings.ctaButtonText ?? "",
+    ctaButtonTextEn: initialSettings.ctaButtonTextEn ?? "",
     platformDetailsEnabled: Boolean(initialSettings.platformDetailsEnabled ?? false),
     platformDetailsTitle: initialSettings.platformDetailsTitle ?? "",
+    platformDetailsTitleEn: initialSettings.platformDetailsTitleEn ?? "",
     platformDetailsSubtitle: initialSettings.platformDetailsSubtitle ?? "",
+    platformDetailsSubtitleEn: initialSettings.platformDetailsSubtitleEn ?? "",
     platformDetailsBackgroundColor: initialSettings.platformDetailsBackgroundColor ?? "",
     platformNewsEnabled: Boolean(initialSettings.platformNewsEnabled ?? false),
     platformNewsSectionTitle: initialSettings.platformNewsSectionTitle ?? "",
+    platformNewsSectionTitleEn: initialSettings.platformNewsSectionTitleEn ?? "",
   });
   const [imageUploading, setImageUploading] = useState(false);
   const [imageUploadError, setImageUploadError] = useState("");
@@ -329,14 +349,6 @@ export function HomepageSettingsForm({
         form.heroTemplate === "coming_soon"
           ? form.heroTemplate
           : "classic";
-      const platformDetailsItemsPayload = platformDetailsItems.map((item) => ({
-        ...item,
-        titleEn: null,
-        descriptionEn: null,
-      }));
-      const platformNewsItemsPayload = platformNewsItems
-        .filter((item) => item.imageUrl.trim() && item.description.trim())
-        .map((item) => ({ ...item, descriptionEn: null }));
       const res = await fetch("/api/dashboard/settings/homepage", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -344,17 +356,17 @@ export function HomepageSettingsForm({
           heroTemplate,
           teacherImageUrl: form.teacherImageUrl.trim() || null,
           heroTitle: form.heroTitle.trim() || null,
-          heroTitleEn: null,
+          heroTitleEn: form.heroTitleEn.trim() || null,
           heroSlogan: form.heroSlogan.trim() || null,
-          heroSloganEn: null,
+          heroSloganEn: form.heroSloganEn.trim() || null,
           platformName: form.platformName.trim() || null,
-          platformNameEn: null,
+          platformNameEn: form.platformNameEn.trim() || null,
           headerLogoUrl: form.headerLogoUrl.trim() || null,
           primaryColor: primaryNorm,
           youtubeUrl: form.youtubeUrl.trim() || null,
           linkedinUrl: form.linkedinUrl.trim() || null,
           pageTitle: form.pageTitle.trim() || null,
-          pageTitleEn: null,
+          pageTitleEn: form.pageTitleEn.trim() || null,
           whatsappUrl: form.whatsappUrl.trim() || null,
           facebookUrl: form.facebookUrl.trim() || null,
           telegramUrl: normalizeTelegramInput(form.telegramUrl) || null,
@@ -364,9 +376,9 @@ export function HomepageSettingsForm({
           teamFacebookUrl: form.teamFacebookUrl.trim() || null,
           teamTelegramUrl: normalizeTelegramInput(form.teamTelegramUrl) || null,
           socialRightLabel: form.socialRightLabel.trim() || null,
-          socialRightLabelEn: null,
+          socialRightLabelEn: form.socialRightLabelEn.trim() || null,
           socialLeftLabel: form.socialLeftLabel.trim() || null,
-          socialLeftLabelEn: null,
+          socialLeftLabelEn: form.socialLeftLabelEn.trim() || null,
           socialLeftEnabled: form.socialLeftEnabled,
           heroBgPreset: form.heroBgPreset || null,
           heroBgCustomFrom: form.heroBgUseCustom ? customFromNorm : null,
@@ -386,9 +398,9 @@ export function HomepageSettingsForm({
           heroSliderCourseId5: form.heroSliderCourseId5.trim() || null,
           heroSliderIntervalSeconds: Math.round(intervalSecondsRaw),
           hero3Title: form.hero3Title.trim() || null,
-          hero3TitleEn: null,
+          hero3TitleEn: form.hero3TitleEn.trim() || null,
           hero3Subtitle: form.hero3Subtitle.trim() || null,
-          hero3SubtitleEn: null,
+          hero3SubtitleEn: form.hero3SubtitleEn.trim() || null,
           hero3PhoneImageUrl: form.hero3PhoneImageUrl.trim() || null,
           hero3PhoneBgColor: hero3PhoneBgNorm,
           hero3StoreBadge1ImageUrl: form.hero3StoreBadge1ImageUrl.trim() || null,
@@ -396,34 +408,36 @@ export function HomepageSettingsForm({
           hero3StoreBadge2ImageUrl: form.hero3StoreBadge2ImageUrl.trim() || null,
           hero3StoreBadge2Link: form.hero3StoreBadge2Link.trim() || null,
           footerTitle: form.footerTitle.trim() || null,
-          footerTitleEn: null,
+          footerTitleEn: form.footerTitleEn.trim() || null,
           footerTagline: form.footerTagline.trim() || null,
-          footerTaglineEn: null,
+          footerTaglineEn: form.footerTaglineEn.trim() || null,
           footerCopyright: form.footerCopyright.trim() || null,
-          footerCopyrightEn: null,
+          footerCopyrightEn: form.footerCopyrightEn.trim() || null,
           reviewsSectionTitle: form.reviewsSectionTitle.trim() || null,
-          reviewsSectionTitleEn: null,
+          reviewsSectionTitleEn: form.reviewsSectionTitleEn.trim() || null,
           reviewsSectionSubtitle: form.reviewsSectionSubtitle.trim() || null,
-          reviewsSectionSubtitleEn: null,
+          reviewsSectionSubtitleEn: form.reviewsSectionSubtitleEn.trim() || null,
           ctaBadgeText: form.ctaBadgeText.trim() || null,
-          ctaBadgeTextEn: null,
+          ctaBadgeTextEn: form.ctaBadgeTextEn.trim() || null,
           ctaTitle: form.ctaTitle.trim() || null,
-          ctaTitleEn: null,
+          ctaTitleEn: form.ctaTitleEn.trim() || null,
           ctaDescription: form.ctaDescription.trim() || null,
-          ctaDescriptionEn: null,
+          ctaDescriptionEn: form.ctaDescriptionEn.trim() || null,
           ctaButtonText: form.ctaButtonText.trim() || null,
-          ctaButtonTextEn: null,
+          ctaButtonTextEn: form.ctaButtonTextEn.trim() || null,
           platformDetailsEnabled: form.platformDetailsEnabled,
           platformDetailsTitle: form.platformDetailsTitle.trim() || null,
-          platformDetailsTitleEn: null,
+          platformDetailsTitleEn: form.platformDetailsTitleEn.trim() || null,
           platformDetailsSubtitle: form.platformDetailsSubtitle.trim() || null,
-          platformDetailsSubtitleEn: null,
+          platformDetailsSubtitleEn: form.platformDetailsSubtitleEn.trim() || null,
           platformDetailsBackgroundColor: platformDetailsBgNorm,
-          platformDetailsItems: platformDetailsItemsPayload,
+          platformDetailsItems,
           platformNewsEnabled: form.platformNewsEnabled,
           platformNewsSectionTitle: form.platformNewsSectionTitle.trim() || null,
-          platformNewsSectionTitleEn: null,
-          platformNewsItems: platformNewsItemsPayload,
+          platformNewsSectionTitleEn: form.platformNewsSectionTitleEn.trim() || null,
+          platformNewsItems: platformNewsItems.filter(
+            (item) => item.imageUrl.trim() && item.description.trim(),
+          ),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -456,7 +470,9 @@ export function HomepageSettingsForm({
       {
         id: `platform-detail-${Date.now()}`,
         title: "",
+        titleEn: null,
         description: "",
+        descriptionEn: null,
         iconType: "preset",
         presetIcon: "chat",
         customIconUrl: null,
@@ -555,6 +571,15 @@ export function HomepageSettingsForm({
                 placeholder={fh("hero3TitleArPh")}
                 className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
               />
+              <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("hero3TitleEnLabel")}</label>
+              <input
+                type="text"
+                value={form.hero3TitleEn}
+                onChange={(e) => setForm((f) => ({ ...f, hero3TitleEn: e.target.value }))}
+                maxLength={300}
+                placeholder={fh("hero3TitleEnPh")}
+                className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("hero3SubtitleLabel")}</label>
@@ -564,6 +589,15 @@ export function HomepageSettingsForm({
                 onChange={(e) => setForm((f) => ({ ...f, hero3Subtitle: e.target.value }))}
                 maxLength={600}
                 placeholder={fh("hero3SubtitleArPh")}
+                className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+              />
+              <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("hero3SubtitleEnLabel")}</label>
+              <input
+                type="text"
+                value={form.hero3SubtitleEn}
+                onChange={(e) => setForm((f) => ({ ...f, hero3SubtitleEn: e.target.value }))}
+                maxLength={600}
+                placeholder={fh("hero3SubtitleEnPh")}
                 className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
               />
             </div>
@@ -1218,6 +1252,14 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phPlatformNameAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelFieldEn")}</label>
+            <input
+              type="text"
+              value={form.platformNameEn}
+              onChange={(e) => setForm((f) => ({ ...f, platformNameEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phPlatformNameEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("heroMainTitleLabel")}</label>
@@ -1227,6 +1269,14 @@ export function HomepageSettingsForm({
               onChange={(e) => setForm((f) => ({ ...f, heroTitle: e.target.value }))}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phHeroTitleAr")}
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelHeroTitleEn")}</label>
+            <input
+              type="text"
+              value={form.heroTitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, heroTitleEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phHeroTitleEn")}
             />
           </div>
           <div>
@@ -1238,6 +1288,14 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phHeroSloganAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelHeroSloganEn")}</label>
+            <input
+              type="text"
+              value={form.heroSloganEn}
+              onChange={(e) => setForm((f) => ({ ...f, heroSloganEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phHeroSloganEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("browserTabTitleLabel")}</label>
@@ -1247,6 +1305,14 @@ export function HomepageSettingsForm({
               onChange={(e) => setForm((f) => ({ ...f, pageTitle: e.target.value }))}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phPageTitleAr")}
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelPageTitleEn")}</label>
+            <input
+              type="text"
+              value={form.pageTitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, pageTitleEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phPageTitleEn")}
             />
           </div>
           <div>
@@ -1258,6 +1324,14 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phFooterTitleAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelFooterTitleEn")}</label>
+            <input
+              type="text"
+              value={form.footerTitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, footerTitleEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phFooterTitleEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("footerTaglineLabel")}</label>
@@ -1268,6 +1342,14 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phFooterTaglineAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelFooterTaglineEn")}</label>
+            <input
+              type="text"
+              value={form.footerTaglineEn}
+              onChange={(e) => setForm((f) => ({ ...f, footerTaglineEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phFooterTaglineEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("copyrightLabel")}</label>
@@ -1277,6 +1359,14 @@ export function HomepageSettingsForm({
               onChange={(e) => setForm((f) => ({ ...f, footerCopyright: e.target.value }))}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
               placeholder={fh("phCopyrightAr")}
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelCopyrightEn")}</label>
+            <input
+              type="text"
+              value={form.footerCopyrightEn}
+              onChange={(e) => setForm((f) => ({ ...f, footerCopyrightEn: e.target.value }))}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+              placeholder={fh("phCopyrightEn")}
             />
             <p className="mt-1 text-xs text-[var(--color-muted)]">{fh("copyrightHint")}</p>
           </div>
@@ -1306,6 +1396,15 @@ export function HomepageSettingsForm({
               placeholder={fh("phPlatformDetailsTitle")}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("sectionTitleEnLabel")}</label>
+            <input
+              type="text"
+              value={form.platformDetailsTitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, platformDetailsTitleEn: e.target.value }))}
+              maxLength={240}
+              placeholder={fh("phPlatformDetailsTitleEn")}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("platformDetailsDescLabel")}</label>
@@ -1315,6 +1414,15 @@ export function HomepageSettingsForm({
               rows={2}
               maxLength={500}
               placeholder={fh("phPlatformDetailsDesc")}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("sectionDescEnLabel")}</label>
+            <textarea
+              value={form.platformDetailsSubtitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, platformDetailsSubtitleEn: e.target.value }))}
+              rows={2}
+              maxLength={500}
+              placeholder={fh("phPlatformDetailsDescEn")}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
             />
           </div>
@@ -1393,6 +1501,22 @@ export function HomepageSettingsForm({
                     placeholder={fh("cardTitlePh")}
                     className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
                   />
+                  <input
+                    type="text"
+                    value={item.titleEn ?? ""}
+                    onChange={(e) =>
+                      setPlatformDetailsItems((prev) =>
+                        prev.map((entry) =>
+                          entry.id === item.id
+                            ? { ...entry, titleEn: e.target.value || null }
+                            : entry,
+                        ),
+                      )
+                    }
+                    maxLength={120}
+                    placeholder={fh("cardTitleEnPh")}
+                    className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+                  />
                   <textarea
                     value={item.description}
                     onChange={(e) =>
@@ -1405,6 +1529,22 @@ export function HomepageSettingsForm({
                     rows={2}
                     maxLength={400}
                     placeholder={fh("cardDescPh")}
+                    className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+                  />
+                  <textarea
+                    value={item.descriptionEn ?? ""}
+                    onChange={(e) =>
+                      setPlatformDetailsItems((prev) =>
+                        prev.map((entry) =>
+                          entry.id === item.id
+                            ? { ...entry, descriptionEn: e.target.value || null }
+                            : entry,
+                        ),
+                      )
+                    }
+                    rows={2}
+                    maxLength={400}
+                    placeholder={fh("cardDescEnPh")}
                     className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
                   />
                   <div className="flex flex-wrap items-center gap-4">
@@ -1549,6 +1689,15 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
               placeholder={fh("phReviewsTitleAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelReviewsTitleEn")}</label>
+            <input
+              type="text"
+              value={form.reviewsSectionTitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, reviewsSectionTitleEn: e.target.value }))}
+              maxLength={400}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+              placeholder={fh("phReviewsTitleEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("reviewsSubtitleLabel")}</label>
@@ -1559,6 +1708,15 @@ export function HomepageSettingsForm({
               maxLength={400}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
               placeholder={fh("phReviewsSubAr")}
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelReviewsSubEn")}</label>
+            <input
+              type="text"
+              value={form.reviewsSectionSubtitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, reviewsSectionSubtitleEn: e.target.value }))}
+              maxLength={400}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+              placeholder={fh("phReviewsSubEn")}
             />
           </div>
         </div>
@@ -1588,6 +1746,15 @@ export function HomepageSettingsForm({
             maxLength={240}
             className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
             placeholder={fh("phNewsTitleAr")}
+          />
+          <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelNewsTitleEn")}</label>
+          <input
+            type="text"
+            value={form.platformNewsSectionTitleEn}
+            onChange={(e) => setForm((f) => ({ ...f, platformNewsSectionTitleEn: e.target.value }))}
+            maxLength={240}
+            className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+            placeholder={fh("phNewsTitleEn")}
           />
           <p className="mt-1 text-xs text-[var(--color-muted)]">{fh("newsTitleDefaultHint")}</p>
         </div>
@@ -1670,6 +1837,23 @@ export function HomepageSettingsForm({
                     className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-foreground)]"
                     placeholder={fh("phNewsCaption")}
                   />
+                  <label className="mt-2 block text-xs text-[var(--color-muted)]">{fh("eventDescriptionEnLabel")}</label>
+                  <textarea
+                    value={item.descriptionEn ?? ""}
+                    onChange={(e) =>
+                      setPlatformNewsItems((prev) =>
+                        prev.map((entry) =>
+                          entry.id === item.id
+                            ? { ...entry, descriptionEn: e.target.value || null }
+                            : entry,
+                        ),
+                      )
+                    }
+                    maxLength={1000}
+                    rows={2}
+                    className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-foreground)]"
+                    placeholder={fh("phNewsCaptionEn")}
+                  />
                 </div>
               </div>
             </div>
@@ -1704,6 +1888,15 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
               placeholder={fh("phCtaBadgeAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelCtaBadgeEn")}</label>
+            <input
+              type="text"
+              value={form.ctaBadgeTextEn}
+              onChange={(e) => setForm((f) => ({ ...f, ctaBadgeTextEn: e.target.value }))}
+              maxLength={120}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+              placeholder={fh("phCtaBadgeEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("ctaHeadlineLabel")}</label>
@@ -1714,6 +1907,15 @@ export function HomepageSettingsForm({
               maxLength={300}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
               placeholder={fh("phCtaTitleAr")}
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelCtaTitleEn")}</label>
+            <input
+              type="text"
+              value={form.ctaTitleEn}
+              onChange={(e) => setForm((f) => ({ ...f, ctaTitleEn: e.target.value }))}
+              maxLength={300}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+              placeholder={fh("phCtaTitleEn")}
             />
           </div>
           <div>
@@ -1726,6 +1928,15 @@ export function HomepageSettingsForm({
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
               placeholder={fh("phCtaDescAr")}
             />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelCtaDescEn")}</label>
+            <textarea
+              value={form.ctaDescriptionEn}
+              onChange={(e) => setForm((f) => ({ ...f, ctaDescriptionEn: e.target.value }))}
+              maxLength={2000}
+              rows={4}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+              placeholder={fh("phCtaDescEn")}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-[var(--color-foreground)]">{fh("ctaButtonLabel")}</label>
@@ -1736,6 +1947,15 @@ export function HomepageSettingsForm({
               maxLength={120}
               className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
               placeholder={fh("phCtaBtnAr")}
+            />
+            <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelCtaBtnEn")}</label>
+            <input
+              type="text"
+              value={form.ctaButtonTextEn}
+              onChange={(e) => setForm((f) => ({ ...f, ctaButtonTextEn: e.target.value }))}
+              maxLength={120}
+              className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+              placeholder={fh("phCtaBtnEn")}
             />
           </div>
         </div>
@@ -1755,6 +1975,14 @@ export function HomepageSettingsForm({
                 className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
                 placeholder={fh("phSocialRightAr")}
               />
+              <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelSocialRightEn")}</label>
+              <input
+                type="text"
+                value={form.socialRightLabelEn}
+                onChange={(e) => setForm((f) => ({ ...f, socialRightLabelEn: e.target.value }))}
+                className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+                placeholder={fh("phSocialRightEn")}
+              />
               <p className="mt-1 text-xs text-[var(--color-muted)]">
                 {fillMessage(t(`${Hp}.previewYoutubeRight`), {
                   label: form.socialRightLabel || t(`${Hp}.exampleSocialRight`),
@@ -1769,6 +1997,14 @@ export function HomepageSettingsForm({
                 onChange={(e) => setForm((f) => ({ ...f, socialLeftLabel: e.target.value }))}
                 className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
                 placeholder={fh("phSocialLeftAr")}
+              />
+              <label className="mt-2 block text-xs font-medium text-[var(--color-muted)]">{fh("labelSocialLeftEn")}</label>
+              <input
+                type="text"
+                value={form.socialLeftLabelEn}
+                onChange={(e) => setForm((f) => ({ ...f, socialLeftLabelEn: e.target.value }))}
+                className="mt-1 w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2"
+                placeholder={fh("phSocialLeftEn")}
               />
               <p className="mt-1 text-xs text-[var(--color-muted)]">
                 {fillMessage(t(`${Hp}.previewYoutubeRight`), {
