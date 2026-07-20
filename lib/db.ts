@@ -882,6 +882,7 @@ const HOMEPAGE_DEFAULTS: HomepageSetting = {
   teachersEnabled: false,
   subscriptionsEnabled: false,
   storeEnabled: false,
+  luckWheelEnabled: false,
   storeSectionTitle: HOMEPAGE_DEFAULT_STORE_SECTION_TITLE_AR,
   storeSectionTitleEn: null,
   storeSectionDescription: HOMEPAGE_DEFAULT_STORE_SECTION_DESCRIPTION_AR,
@@ -1136,6 +1137,16 @@ async function ensureHomepageStoreEnabledColumn(): Promise<void> {
   return ensureOnce("ensureHomepageStoreEnabledColumn", async () => {
     try {
       await sql`ALTER TABLE "HomepageSetting" ADD COLUMN IF NOT EXISTS store_enabled BOOLEAN NOT NULL DEFAULT false`;
+    } catch {
+      /* DDL غير متاح */
+    }
+  });
+}
+
+async function ensureHomepageLuckWheelEnabledColumn(): Promise<void> {
+  return ensureOnce("ensureHomepageLuckWheelEnabledColumn", async () => {
+    try {
+      await sql`ALTER TABLE "HomepageSetting" ADD COLUMN IF NOT EXISTS luck_wheel_enabled BOOLEAN NOT NULL DEFAULT false`;
     } catch {
       /* DDL غير متاح */
     }
@@ -1412,6 +1423,7 @@ async function getHomepageSettingsUncached(): Promise<HomepageSetting> {
       ensureHomepageHeroCustomBgColumns(),
       ensureAddBalanceSettingsColumns(),
       ensureHomepageStoreEnabledColumn(),
+      ensureHomepageLuckWheelEnabledColumn(),
       ensureHomepageStoreSectionCopyColumns(),
       ensureHomepagePrimaryColorColumn(),
       ensureHomepageHeaderLogoColumn(),
@@ -1749,6 +1761,10 @@ async function getHomepageSettingsUncached(): Promise<HomepageSetting> {
       storeEnabled: Boolean(
         (row as { store_enabled?: boolean }).store_enabled ??
           (c as { storeEnabled?: boolean }).storeEnabled,
+      ),
+      luckWheelEnabled: Boolean(
+        (row as { luck_wheel_enabled?: boolean }).luck_wheel_enabled ??
+          (c as { luckWheelEnabled?: boolean }).luckWheelEnabled,
       ),
       storeSectionTitle: pickReviewsSectionString(
         row,
@@ -2519,6 +2535,132 @@ export async function setStoreFeatureEnabled(enabled: boolean): Promise<void> {
       store_enabled = EXCLUDED.store_enabled,
       updated_at = NOW()
   `;
+}
+
+export async function getLuckWheelFeatureEnabled(): Promise<boolean> {
+  try {
+    await ensureHomepageLuckWheelEnabledColumn();
+    const rows = await sql`SELECT luck_wheel_enabled FROM "HomepageSetting" WHERE id = 'default' LIMIT 1`;
+    const v = (rows[0] as { luck_wheel_enabled?: boolean } | undefined)?.luck_wheel_enabled;
+    return !!v;
+  } catch {
+    return false;
+  }
+}
+
+export async function setLuckWheelFeatureEnabled(enabled: boolean): Promise<void> {
+  await ensureHomepageLuckWheelEnabledColumn();
+  await sql`
+    INSERT INTO "HomepageSetting" (id, luck_wheel_enabled, updated_at)
+    VALUES ('default', ${enabled}, NOW())
+    ON CONFLICT (id) DO UPDATE SET
+      luck_wheel_enabled = EXCLUDED.luck_wheel_enabled,
+      updated_at = NOW()
+  `;
+}
+
+export type LuckWheelSpinRow = {
+  id: string;
+  userId: string;
+  resultKey: string;
+  createdAt: string;
+};
+
+export type LuckWheelSpinAdminRow = LuckWheelSpinRow & {
+  studentName: string;
+  studentEmail: string;
+};
+
+async function ensureLuckWheelSchema(): Promise<void> {
+  return ensureOnce("ensureLuckWheelSchema", async () => {
+    try {
+      await ensureHomepageLuckWheelEnabledColumn();
+      await sql`
+        CREATE TABLE IF NOT EXISTS "LuckWheelSpin" (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+          result_key TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS "LuckWheelSpin_created_at_idx" ON "LuckWheelSpin"(created_at DESC)`;
+      await sql`CREATE INDEX IF NOT EXISTS "LuckWheelSpin_user_id_created_at_idx" ON "LuckWheelSpin"(user_id, created_at DESC)`;
+    } catch {
+      /* DDL غير متاح */
+    }
+  });
+}
+
+export async function createLuckWheelSpin(data: {
+  userId: string;
+  resultKey: string;
+}): Promise<LuckWheelSpinRow> {
+  await ensureLuckWheelSchema();
+  const id = generateId();
+  const rows = await sql`
+    INSERT INTO "LuckWheelSpin" (id, user_id, result_key)
+    VALUES (${id}, ${data.userId}, ${data.resultKey})
+    RETURNING id, user_id, result_key, created_at
+  `;
+  const r = rows[0] as {
+    id: string;
+    user_id: string;
+    result_key: string;
+    created_at: string | Date;
+  };
+  return {
+    id: String(r.id),
+    userId: String(r.user_id),
+    resultKey: String(r.result_key),
+    createdAt: new Date(r.created_at).toISOString(),
+  };
+}
+
+export async function listLuckWheelSpinsForUser(
+  userId: string,
+  limit = 10,
+): Promise<LuckWheelSpinRow[]> {
+  await ensureLuckWheelSchema();
+  const safeLimit = Math.min(Math.max(1, limit), 50);
+  const rows = await sql`
+    SELECT id, user_id, result_key, created_at
+    FROM "LuckWheelSpin"
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT ${safeLimit}
+  `;
+  return (rows as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    userId: String(r.user_id),
+    resultKey: String(r.result_key),
+    createdAt: new Date(r.created_at as string | Date).toISOString(),
+  }));
+}
+
+export async function listLuckWheelSpinsForAdmin(limit = 100): Promise<LuckWheelSpinAdminRow[]> {
+  await ensureLuckWheelSchema();
+  const safeLimit = Math.min(Math.max(1, limit), 500);
+  const rows = await sql`
+    SELECT
+      s.id,
+      s.user_id,
+      s.result_key,
+      s.created_at,
+      COALESCE(u.name, '') AS student_name,
+      COALESCE(u.email, '') AS student_email
+    FROM "LuckWheelSpin" s
+    LEFT JOIN "User" u ON u.id = s.user_id
+    ORDER BY s.created_at DESC
+    LIMIT ${safeLimit}
+  `;
+  return (rows as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    userId: String(r.user_id),
+    resultKey: String(r.result_key),
+    createdAt: new Date(r.created_at as string | Date).toISOString(),
+    studentName: String(r.student_name ?? ""),
+    studentEmail: String(r.student_email ?? ""),
+  }));
 }
 
 let storeProductsSchemaEnsured = false;

@@ -214,6 +214,8 @@ export interface HomepageSetting {
   subscriptionsEnabled?: boolean;
   /** عند true يظهر قسم متجر المنصة في الصفحة الرئيسية */
   storeEnabled?: boolean;
+  /** عند true يُسمح للطلاب بلف عجلة الحظ */
+  luckWheelEnabled?: boolean;
   /** عنوان قسم المتجر في الصفحة الرئيسية (عند null أو فارغ يُستخدم الافتراضي) */
   storeSectionTitle?: string | null;
   storeSectionTitleEn?: string | null;

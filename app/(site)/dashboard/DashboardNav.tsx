@@ -75,6 +75,9 @@ export function DashboardNav({
         <NavLink href="/dashboard/referral">
           {t("dashboardNav.referral", "Invite a friend")}
         </NavLink>
+        <NavLink href="/dashboard/luck-wheel">
+          {t("dashboardNav.luckWheel", "Luck wheel")}
+        </NavLink>
         <NavLink href="/dashboard/messages">
           {t("dashboardNav.inbox", "Inbox")}
         </NavLink>
@@ -137,6 +140,9 @@ export function DashboardNav({
           <NavLink href="/dashboard/subscriptions">{t("dashboardNav.platformSubscriptions", "Platform subscriptions")}</NavLink>
           <NavLink href="/dashboard/subscription-students">{t("dashboardNav.subscribedStudents", "Subscribed students")}</NavLink>
           <NavLink href="/dashboard/store">{t("dashboardNav.platformStore", "Platform store")}</NavLink>
+          <NavLink href="/dashboard/luck-wheel/manage">
+            {t("dashboardNav.luckWheelManage", "Luck wheel")}
+          </NavLink>
           <NavLink href="/dashboard/elhawy-world/manage">
             {t("dashboardNav.elhawyWorldManage", "Elhawy World videos")}
           </NavLink>
