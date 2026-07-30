@@ -162,15 +162,6 @@ export default async function HomePage() {
               </div>
               <div className="home-hero-teacher-col flex-shrink-0 order-1 lg:order-2 lg:ml-6">
                 <div className="home-hero-teacher-wrap relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/intro/hero-tree.png"
-                    alt=""
-                    className="home-hero-tree"
-                    aria-hidden
-                    loading="lazy"
-                    decoding="async"
-                  />
                   <div className="hero-image-frame relative z-[2] h-60 w-60 p-[2px] sm:h-72 sm:w-72 lg:h-80 lg:w-80">
                     <div className="relative h-full w-full">
                       <Image

@@ -88,7 +88,7 @@ html.dark .home-themed,
 }
 
 /* ============================================================
-   Hero decor — moon + rays, hero tree
+   Hero decor — moon + rays
    ============================================================ */
 .home-hero-decor {
   position: absolute;
@@ -187,7 +187,6 @@ html.dark .home-themed,
   animation: home-ray-pulse 7s ease-in-out infinite;
 }
 
-/* Hero tree — arches from the left over the teacher portrait. */
 .home-hero-teacher-wrap {
   position: relative;
   isolation: isolate;
@@ -195,56 +194,6 @@ html.dark .home-themed,
 
 .home-hero-teacher-wrap .float-icon {
   z-index: 4;
-}
-
-.home-hero-tree {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  display: block;
-  /* Match desktop hug: trunk left, arch over portrait (teacher is 15rem on mobile). */
-  height: calc(20rem * 2.6);
-  width: auto;
-  max-width: min(46rem, 145vw);
-  left: 70%;
-  bottom: -180%;
-  transform: translateX(-80%);
-  object-fit: contain;
-  object-position: left bottom;
-  opacity: 0.94;
-  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.55));
-}
-
-/* Tablet — same proportions as desktop (teacher is 18rem). */
-@media (min-width: 640px) and (max-width: 1023px) {
-  .home-hero-tree {
-    height: calc(23rem * 2.6);
-    max-width: min(46rem, 88vw);
-    bottom: -150%;
-    transform: translateX(-80%);
-  }
-}
-
-/* Tree may extend below the portrait on stacked layouts — keep copy above it. */
-@media (max-width: 1023px) {
-  .home-hero-teacher-col {
-    position: relative;
-    z-index: 1;
-  }
-
-  .home-hero-copy {
-    position: relative;
-    z-index: 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .home-hero-tree {
-    height: clamp(55rem, 42vw, 44rem);
-    max-width: min(46rem, 62vw);
-    transform: translateX(-80%);
-    bottom: -120%;
-  }
 }
 
 @keyframes home-moon-float {

@@ -560,6 +560,20 @@ export default async function DashboardPage() {
                   )}
                 </p>
               </Link>
+              <Link
+                href="/dashboard/luck-wheel/manage"
+                className="flex min-h-[200px] flex-col justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center transition hover:border-[var(--color-primary)]/30"
+              >
+                <h3 className="font-semibold text-[var(--color-foreground)]">
+                  {t("dashboard.page.luckWheelCardTitle", "Luck wheel")}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">
+                  {t(
+                    "dashboard.page.luckWheelCardMeta",
+                    "Open or close the wheel for students and review spin history",
+                  )}
+                </p>
+              </Link>
             </>
           )}
         </div>

@@ -313,6 +313,8 @@ export const enMessages: Messages = {
       adminLeaderboardCardMeta: "Top students by points with contact numbers",
       pointsControlCardTitle: "Points control",
       pointsControlCardMeta: "Set how many points students earn per action",
+      luckWheelCardTitle: "Luck wheel",
+      luckWheelCardMeta: "Open or close the wheel for students and review spin history",
       customizePlatformSectionTitle: "Customize the platform",
       homepageSettingsTitleCard: "Homepage settings",
       homepageSettingsMeta: "Teacher image, platform name, title, and logo",

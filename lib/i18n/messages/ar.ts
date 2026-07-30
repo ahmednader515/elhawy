@@ -309,6 +309,8 @@ export const arMessages: Messages = {
       adminLeaderboardCardMeta: "أعلى الطلاب حسب النقاط مع أرقام التواصل",
       pointsControlCardTitle: "التحكم في النقاط",
       pointsControlCardMeta: "تحديد عدد النقاط لكل إجراء يقوم به الطالب",
+      luckWheelCardTitle: "عجلة الحظ",
+      luckWheelCardMeta: "فتح أو إغلاق العجلة للطلاب ومراجعة سجل اللفات",
       customizePlatformSectionTitle: "تعديل تصميم المنصة",
       homepageSettingsTitleCard: "إعدادات الصفحة الرئيسية",
       homepageSettingsMeta: "صورة المدرس واسم المنصة والعنوان والشعار",
