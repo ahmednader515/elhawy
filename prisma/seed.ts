@@ -1,7 +1,6 @@
 /**
- * بذرة البيانات — تستخدم اتصال Neon مباشرة (بدون Prisma).
- * تشغيل: npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts
- * أو: node --loader ts-node/esm prisma/seed.ts
+ * بذرة البيانات — عبر طبقة lib/db (Prisma + PostgreSQL).
+ * تشغيل: npx tsx prisma/seed.ts
  */
 import "dotenv/config";
 import { hash } from "bcryptjs";

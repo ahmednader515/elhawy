@@ -58,12 +58,12 @@ export async function POST(request: NextRequest) {
     let userMessage = "حدث خطأ أثناء إنشاء الحساب.";
     if (message.includes("DATABASE_URL") || message.includes("Environment variable not found")) {
       userMessage = isVercel
-        ? "قاعدة البيانات غير مضبوطة على السيرفر. في Vercel: Settings → Environment Variables → أضف DATABASE_URL (رابط Neon أو Supabase) ثم أعد النشر. للتحقق: افتح /api/health"
+        ? "قاعدة البيانات غير مضبوطة على السيرفر. أضف DATABASE_URL (رابط Postgres على الـ VPS) ثم أعد النشر. للتحقق: افتح /api/health"
         : "لم يتم ضبط قاعدة البيانات. أنشئ ملف .env وأضف DATABASE_URL ثم نفّذ: npm run db:push";
     } else if (message.includes("does not exist") || message.includes("Unknown table") || message.includes("relation") || message.includes("P1001") || message.includes("P2021") || message.includes("Can't reach")) {
       userMessage = isVercel
-        ? "الاتصال بقاعدة البيانات فشل. تأكد أن DATABASE_URL على Vercel يشير إلى قاعدة سحابية (Neon/Supabase) وليس localhost، ثم أعد النشر. للتحقق: افتح /api/health"
-        : "جدول المستخدمين غير موجود أو قاعدة البيانات غير متصلة. افتح لوحة Neon → SQL Editor، انسخ محتوى ملف scripts/init-neon-database.sql ونفّذه مرة واحدة لإنشاء الجداول.";
+        ? "الاتصال بقاعدة البيانات فشل. تأكد أن DATABASE_URL يشير إلى Postgres على الـ VPS ويمكن الوصول إليه من السيرفر، ثم أعد النشر. للتحقق: افتح /api/health"
+        : "جدول المستخدمين غير موجود أو قاعدة البيانات غير متصلة. تأكد أن Postgres يعمل ثم نفّذ: npm run db:push";
     } else if (process.env.NODE_ENV === "development" && message) {
       userMessage = message;
     }

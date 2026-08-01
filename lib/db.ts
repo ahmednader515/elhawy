@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { neon } from "@neondatabase/serverless";
+import { PrismaClient } from "@prisma/client";
 import { CACHE_TAGS } from "./cache-tags";
 import type {
   User,
@@ -55,12 +55,65 @@ import {
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL غير معرّف");
 
-/** عميل Neon — الاتصال المباشر بقاعدة البيانات Neon (بدون Prisma) */
-export const sql = neon(connectionString);
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+/** عميل Prisma — اتصال PostgreSQL عبر DATABASE_URL (Hostinger VPS أو أي Postgres) */
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+
+function isReturningQuery(query: string): boolean {
+  const q = query.trim().toUpperCase();
+  return (
+    q.startsWith("SELECT") ||
+    q.startsWith("WITH") ||
+    q.includes(" RETURNING ") ||
+    q.endsWith(" RETURNING") ||
+    /RETURNING\s+\*?/.test(q)
+  );
+}
+
+/**
+ * توافق مع واجهة الاستعلامات السابقة (tagged template + sql(query, params[])).
+ * يستخدم Prisma $queryRaw / $executeRaw بدل Neon serverless.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function sql(
+  stringsOrQuery: TemplateStringsArray | string,
+  ...values: unknown[]
+): Promise<any[]> {
+  if (typeof stringsOrQuery === "string") {
+    const params = (Array.isArray(values[0]) ? values[0] : values) as unknown[];
+    if (isReturningQuery(stringsOrQuery)) {
+      return (await prisma.$queryRawUnsafe(stringsOrQuery, ...params)) as any[];
+    }
+    await prisma.$executeRawUnsafe(stringsOrQuery, ...params);
+    return [];
+  }
+
+  const head = (stringsOrQuery[0] ?? "").trim().toUpperCase();
+  const fullPreview = stringsOrQuery.join(" ").toUpperCase();
+  const wantsRows =
+    head.startsWith("SELECT") ||
+    head.startsWith("WITH") ||
+    fullPreview.includes(" RETURNING ");
+
+  if (wantsRows) {
+    return (await prisma.$queryRaw(stringsOrQuery, ...values)) as any[];
+  }
+  await prisma.$executeRaw(stringsOrQuery, ...values);
+  return [];
+}
 
 /**
  * Many pages call "ensure schema" helpers during render.
- * On remote DBs (e.g. Neon), repeating `ALTER TABLE ... IF NOT EXISTS` on every request is very slow.
+ * On remote DBs, repeating `ALTER TABLE ... IF NOT EXISTS` on every request is very slow.
  * We memoize each ensure() so it runs once per server process.
  */
 const ensureOnceMap = new Map<string, Promise<void>>();

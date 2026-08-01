@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
         : []),
     ],
   },
-  serverExternalPackages: ["@neondatabase/serverless"],
+  serverExternalPackages: ["@prisma/client", "prisma"],
   turbopack: {
     resolveAlias: {
       "next/auth": "next-auth",

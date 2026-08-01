@@ -1,9 +1,8 @@
-// منصة تعليمية - Prisma Schema
-// متوافق مع Vercel (PostgreSQL موصى به)
+// منصة تعليمية - Prisma Schema (PostgreSQL)
 //
-// على Vercel: يجب تعيين DATABASE_URL من Settings → Environment Variables
-// (رابط PostgreSQL من Neon أو Supabase أو Vercel Postgres) ثم Redeploy.
-// راجع ENV_VERCEL.md للمتغيرات المطلوبة.
+// عيّن DATABASE_URL في ملف .env إلى رابط Postgres على الـ VPS (Hostinger)
+// مثال: postgresql://USER:PASSWORD@HOST:5432/DATABASE
+// ثم: npx prisma generate && npx prisma db push
 
 generator client {
   provider = "prisma-client-js"

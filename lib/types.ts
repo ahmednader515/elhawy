@@ -1,5 +1,5 @@
 /**
- * أنواع البيانات المطابقة لجداول Neon (بدون Prisma)
+ * أنواع البيانات المطابقة لجداول PostgreSQL (عبر Prisma / raw SQL)
  */
 
 export type UserRole = "ADMIN" | "ASSISTANT_ADMIN" | "STUDENT" | "TEACHER";

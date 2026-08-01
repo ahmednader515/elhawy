@@ -22,15 +22,15 @@ export async function GET() {
       dbStatus = "error";
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("Can't reach") || msg.includes("ECONNREFUSED") || msg.includes("connection")) {
-        dbMessage = "لا يمكن الوصول لقاعدة البيانات. تأكد أن DATABASE_URL يشير إلى قاعدة سحابية (Neon/Supabase) وليس localhost.";
+        dbMessage = "لا يمكن الوصول لقاعدة البيانات. تأكد أن DATABASE_URL صحيح وأن Postgres يعمل على الـ VPS (أو أن المنفذ مفتوح/SSH tunnel مضبوط إن كنت تتصل عن بُعد).";
       } else if (msg.includes("Authentication failed") || msg.includes("password")) {
         dbMessage = "فشل الاتصال: تحقق من صحة اسم المستخدم وكلمة المرور في DATABASE_URL.";
       } else {
-        dbMessage = "خطأ في الاتصال. تحقق من DATABASE_URL وأعد النشر.";
+        dbMessage = "خطأ في الاتصال. تحقق من DATABASE_URL وإعدادات Prisma.";
       }
     }
   } else {
-    dbMessage = "Environment variable not found: DATABASE_URL. في Vercel: Settings → Environment Variables → أضف Key: DATABASE_URL وقيمة رابط PostgreSQL (Neon/Supabase) ثم Redeploy. راجع ENV_VERCEL.md.";
+    dbMessage = "Environment variable not found: DATABASE_URL. أضف في .env رابط PostgreSQL (مثال: postgresql://USER:PASSWORD@HOST:5432/DATABASE) ثم نفّذ: npx prisma generate";
   }
 
   const authOk = hasAuthSecret && hasAuthUrl;
@@ -54,7 +54,7 @@ export async function GET() {
       messages: authMessages.length ? authMessages : ["مضبوط"],
     },
     hint: !ok
-      ? "في Vercel: Project → Settings → Environment Variables. أضف DATABASE_URL (رابط Neon/Supabase)، NEXTAUTH_SECRET، NEXTAUTH_URL ثم Redeploy."
+      ? "أضف DATABASE_URL (رابط Postgres على الـ VPS) و NEXTAUTH_SECRET و NEXTAUTH_URL في بيئة التشغيل، ثم أعد التشغيل. للتحقق محلياً: افتح /api/health"
       : undefined,
   });
 }
