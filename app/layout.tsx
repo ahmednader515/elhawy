@@ -4,7 +4,6 @@ import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import { StoreSplashProvider } from "@/components/StoreSplashProvider";
-import { InspectGuard } from "@/components/InspectGuard";
 import { ForceLogoutGuard } from "@/components/ForceLogoutGuard";
 import { MagicCursor } from "@/components/MagicCursor";
 import { BackgroundMusicMute } from "@/components/BackgroundMusicMute";
@@ -86,7 +85,6 @@ export default async function RootLayout({
           <BackgroundMusicMute />
           <SessionProvider>
             <StoreSplashProvider>
-              <InspectGuard />
               <ForceLogoutGuard />
               {children}
             </StoreSplashProvider>
