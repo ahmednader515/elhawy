@@ -2,7 +2,7 @@
 
 إذا ظهر الخطأ: **`Environment variable not found: DATABASE_URL`** أو فشل تسجيل الدخول/إنشاء الحساب على النسخة المرفوعة، يجب إضافة المتغيرات التالية في Vercel.
 
-## الخطوات
+# الخطوات
 
 1. افتح مشروعك على **[Vercel](https://vercel.com)**.
 2. ادخل إلى **Settings** → **Environment Variables**.
