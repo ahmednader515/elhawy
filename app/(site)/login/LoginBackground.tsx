@@ -195,7 +195,6 @@ export default function LoginBackground({
 
     const maxPixelRatio = isLite ? 1 : Math.min(window.devicePixelRatio, 1.25);
     const frameIntervalMs = isLite ? 33 : 0;
-    const interactingFrameIntervalMs = isLite ? 50 : 24;
 
     function init() {
       scene = new THREE.Scene();
@@ -281,9 +280,7 @@ export default function LoginBackground({
       animationFrameId = requestAnimationFrame(animate);
       if (document.visibilityState === "hidden") return;
 
-      const interacting = document.documentElement.classList.contains("magic-cursor-interacting");
-      const minFrameMs = interacting ? interactingFrameIntervalMs : frameIntervalMs;
-      if (minFrameMs > 0 && now - lastFrameAt < minFrameMs) return;
+      if (frameIntervalMs > 0 && now - lastFrameAt < frameIntervalMs) return;
       lastFrameAt = now;
 
       uniforms.t.value = clock.getElapsedTime();

@@ -502,14 +502,7 @@ html.dark .home-themed,
   }
 }
 
-/* Pause heavy hero motion while the magic cursor is moving or hero is off-screen. */
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .home-moon-wrap,
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .home-moon-rays,
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .home-moon-halo,
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .hero-star-dot,
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .hero-image-frame,
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .float-icon,
-html.magic-cursor-interacting .hero-saas:not(.hero-saas--offscreen) .hero-shooting-star,
+/* Pause heavy hero motion while the hero is off-screen. */
 .hero-saas--offscreen .home-moon-wrap,
 .hero-saas--offscreen .home-moon-rays,
 .hero-saas--offscreen .home-moon-halo,

@@ -971,18 +971,3 @@
   text-align: center;
 }
 
-/* Pause intro ambient motion while the magic cursor is moving. */
-html.magic-cursor-interacting .intro-prop--clouds,
-html.magic-cursor-interacting .intro-prop--moon,
-html.magic-cursor-interacting .intro-prop--fog,
-html.magic-cursor-interacting .intro-prop--particles,
-html.magic-cursor-interacting .intro-prop--flame,
-html.magic-cursor-interacting .intro-portal-beam-shaft,
-html.magic-cursor-interacting .intro-portal-beam-bloom,
-html.magic-cursor-interacting .intro-gate-cta-bg,
-html.magic-cursor-interacting .intro-gate-cta-diamond,
-html.magic-cursor-interacting .intro-sign-bulb,
-html.magic-cursor-interacting .intro-loading-ring,
-html.magic-cursor-interacting .intro-loading-glow {
-  animation-play-state: paused !important;
-}

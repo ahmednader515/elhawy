@@ -5,7 +5,6 @@ import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import { StoreSplashProvider } from "@/components/StoreSplashProvider";
 import { ForceLogoutGuard } from "@/components/ForceLogoutGuard";
-import { MagicCursor } from "@/components/MagicCursor";
 import { BackgroundMusicMute } from "@/components/BackgroundMusicMute";
 import { getHomepageSettings } from "@/lib/db";
 import { normalizeHeroHex } from "@/lib/hero-bg";
@@ -72,7 +71,6 @@ export default async function RootLayout({
         ) : null}
       </head>
       <body className={`${outfit.variable} font-sans antialiased min-h-screen flex flex-col`}>
-        <MagicCursor />
         <NextTopLoader
           color={platformPrimaryColor ?? "#0d9488"}
           height={3}
