@@ -1,8 +1,5 @@
-// منصة تعليمية - Prisma Schema (PostgreSQL)
-//
-// عيّن DATABASE_URL في ملف .env إلى رابط Postgres على الـ VPS (Hostinger)
-// مثال: postgresql://USER:PASSWORD@HOST:5432/DATABASE
-// ثم: npx prisma generate && npx prisma db push
+// Prisma schema — مصدر الحقيقة للجداول (مُستخرج من قاعدة الإنتاج عبر db pull)
+// بعد تعديل المخطط: npx prisma generate && npx prisma db push
 
 generator client {
   provider = "prisma-client-js"
@@ -13,198 +10,701 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  ADMIN           // متحكم: إنشاء كورسات، متابعة طلاب، إضافة رصيد
-  ASSISTANT_ADMIN // مساعد أدمن: إنشاء كورسات ومتابعة طلاب (بدون إضافة رصيد)
-  STUDENT         // طالب: الرتبة الافتراضية عند إنشاء الحساب
-  TEACHER         // مدرس: كورساته فقط، يظهر في «اختر المدرسين» عند تفعيل الميزة
+model ActivationCode {
+  id                   String                 @id
+  course_id            String
+  code                 String                 @unique
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  used_at              DateTime?              @db.Timestamptz(6)
+  used_by_user_id      String?
+  Course               Course                 @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User                 User?                  @relation(fields: [used_by_user_id], references: [id], onUpdate: NoAction)
+  ActivationCodeLesson ActivationCodeLesson[]
+  ActivationCodeQuiz   ActivationCodeQuiz[]
+
+  @@index([code])
+  @@index([course_id])
+  @@index([created_at])
 }
 
-model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
-  password       String        @map("password_hash")
-  name           String
-  role           UserRole      @default(STUDENT)
-  balance        Decimal       @default(0) @db.Decimal(10, 2) // رصيد الطالب (يُستخدم للأدمن)
-  copyrightCode  String?       @unique @map("copyright_code") @db.VarChar(10) // كود حقوق الطبع للطالب (مثل A0125)
-  experiencePoints Int         @default(0) @map("experience_points") // نقاط السحر (XP)
-  wizardLevel    Int           @default(1) @map("wizard_level")
-  teacherSubject String?       @map("teacher_subject")
-  teacherAvatarUrl String?     @map("teacher_avatar_url")
-  /// 1–4 = ترتيب البطاقة في الرئيسية؛ null = يُكمّل تلقائياً بعد المحددين (حتى 4)
-  teacherHomepageOrder Int?    @map("teacher_homepage_order")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  enrollments    Enrollment[]
-  coursesCreated Course[]      @relation("CourseCreator")
-  quizAttempts   QuizAttempt[]
-  categoriesCreated Category[] @relation("CategoryCreator")
-  lessonCompletions LessonCompletion[]
-  courseCompletions CourseCompletion[]
-  pointEvents    PointEvent[]
+model ActivationCodeLesson {
+  activation_code_id String
+  lesson_id          String
+  ActivationCode     ActivationCode @relation(fields: [activation_code_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Lesson             Lesson         @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([activation_code_id, lesson_id])
+  @@index([activation_code_id], map: "ActivationCodeLesson_code_idx")
+  @@index([lesson_id], map: "ActivationCodeLesson_lesson_idx")
+}
+
+model ActivationCodeQuiz {
+  activation_code_id String
+  quiz_id            String
+  ActivationCode     ActivationCode @relation(fields: [activation_code_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Quiz               Quiz           @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([activation_code_id, quiz_id])
+  @@index([activation_code_id], map: "ActivationCodeQuiz_code_idx")
+  @@index([quiz_id], map: "ActivationCodeQuiz_quiz_idx")
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String
-  nameAr      String?  @map("name_ar")
-  slug        String   @unique
-  description String?
-  imageUrl    String?  @map("image_url")
-  order       Int      @default(0)
-  createdById String?  @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  courses     Course[]
-  createdBy   User?    @relation("CategoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  id            String   @id
+  name          String
+  name_ar       String?
+  slug          String   @unique
+  description   String?
+  image_url     String?
+  order         Int      @default(0)
+  created_by_id String?
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  Course        Course[]
+}
+
+model Challenge {
+  id                  String                @id
+  title               String
+  title_en            String?
+  description         String?
+  description_en      String?
+  question_type       String                @default("MULTIPLE_CHOICE")
+  options             Json?
+  correct_answer      String
+  is_active           Boolean               @default(true)
+  sort_order          Int                   @default(0)
+  created_by          String?
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  User                User?                 @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  ChallengeSubmission ChallengeSubmission[]
+
+  @@index([is_active, sort_order], map: "Challenge_is_active_idx")
+}
+
+model ChallengeSubmission {
+  id           String    @id
+  user_id      String
+  challenge_id String
+  answer       String
+  is_correct   Boolean   @default(false)
+  submitted_at DateTime  @default(now()) @db.Timestamptz(6)
+  Challenge    Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User         User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, challenge_id], map: "challenge_submission_unique_user_challenge")
+  @@index([user_id])
+}
+
+model Conversation {
+  id                                      String    @id
+  staff_user_id                           String
+  student_user_id                         String
+  created_at                              DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                              DateTime  @default(now()) @db.Timestamptz(6)
+  User_Conversation_staff_user_idToUser   User      @relation("Conversation_staff_user_idToUser", fields: [staff_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User_Conversation_student_user_idToUser User      @relation("Conversation_student_user_idToUser", fields: [student_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Message                                 Message[]
+
+  @@unique([staff_user_id, student_user_id])
+  @@index([staff_user_id])
+  @@index([student_user_id])
 }
 
 model Course {
-  id               String   @id @default(cuid())
-  title            String
-  titleAr          String?  @map("title_ar")
-  slug             String   @unique
-  description      String   @db.Text
-  shortDesc        String?  @map("short_desc") @db.VarChar(300)
-  imageUrl         String?  @map("image_url")
-  price            Decimal  @default(0) @db.Decimal(10, 2) // سعر الكورس
-  duration         String?  // مثل "4 أسابيع" أو "12 ساعة"
-  level            String?  // beginner | intermediate | advanced
-  isPublished      Boolean  @default(false) @map("is_published")
-  order            Int      @default(0)
-  maxQuizAttempts  Int?     @map("max_quiz_attempts") // حد مرات دخول الاختبار في الكورس (null = غير محدود)
-  categoryId       String?  @map("category_id")
-  createdById      String?  @map("created_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  category         Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdBy        User?    @relation("CourseCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  lessons          Lesson[]
-  quizzes          Quiz[]
-  enrollments      Enrollment[]
-  lessonCompletions LessonCompletion[]
-  courseCompletions CourseCompletion[]
-  pointEvents      PointEvent[]
-}
+  id                 String               @id
+  title              String
+  title_ar           String?
+  slug               String               @unique
+  description        String
+  description_en     String?
+  short_desc         String?              @db.VarChar(300)
+  short_desc_en      String?              @db.VarChar(300)
+  image_url          String?
+  price              Decimal              @default(0) @db.Decimal(10, 2)
+  duration           String?
+  level              String?
+  is_published       Boolean              @default(false)
+  order              Int                  @default(0)
+  max_quiz_attempts  Int?
+  category_id        String?
+  created_by_id      String?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  accepts_homework   Boolean              @default(false)
+  ActivationCode     ActivationCode[]
+  Category           Category?            @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  User               User?                @relation(fields: [created_by_id], references: [id], onUpdate: NoAction)
+  CourseCompletion   CourseCompletion[]
+  Enrollment         Enrollment[]
+  HomeworkSubmission HomeworkSubmission[]
+  Lesson             Lesson[]
+  LessonCompletion   LessonCompletion[]
+  LessonRating       LessonRating[]
+  LiveStream         LiveStream[]
+  Payment            Payment[]
+  PointEvent         PointEvent[]
+  Quiz               Quiz[]
+  QuizCompletion     QuizCompletion[]
 
-enum QuestionType {
-  MULTIPLE_CHOICE // اختياري
-  ESSAY          // مقالي
-  TRUE_FALSE     // صح وخطأ
-}
-
-model Quiz {
-  id               String        @id @default(cuid())
-  title            String
-  titleAr          String?       @map("title_ar")
-  courseId         String        @map("course_id")
-  order            Int           @default(0)
-  timeLimitMinutes Int?          @map("time_limit_minutes") // وقت الاختبار بالدقائق (null = غير محدود)
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
-  course           Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  questions        Question[]
-  quizAttempts     QuizAttempt[]
-}
-
-model Question {
-  id           String       @id @default(cuid())
-  type         QuestionType
-  questionText String       @map("question_text") @db.Text
-  order        Int          @default(0)
-  quizId       String       @map("quiz_id")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-  quiz         Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  options      QuestionOption[]
-}
-
-model QuestionOption {
-  id        String   @id @default(cuid())
-  text      String   @db.Text
-  isCorrect Boolean  @default(false) @map("is_correct")
-  questionId String  @map("question_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-}
-
-model Enrollment {
-  id         String   @id @default(cuid())
-  userId     String   @map("user_id")
-  courseId   String   @map("course_id")
-  enrolledAt DateTime @default(now()) @map("enrolled_at")
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  @@unique([userId, courseId])
-}
-
-model QuizAttempt {
-  id             String   @id @default(cuid())
-  userId         String   @map("user_id")
-  quizId         String   @map("quiz_id")
-  score          Int      // عدد الإجابات الصحيحة
-  totalQuestions Int      @map("total_questions")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-}
-
-model Lesson {
-  id        String   @id @default(cuid())
-  title     String
-  titleAr   String?  @map("title_ar")
-  slug      String
-  content   String?  @db.Text
-  videoUrl  String?  @map("video_url")
-  pdfUrl    String?  @map("pdf_url")
-  duration  Int?     // بالدقائق (اختياري - غير مستخدم في النموذج)
-  order     Int      @default(0)
-  courseId  String   @map("course_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessonCompletions LessonCompletion[]
-  @@unique([courseId, slug])
-}
-
-model LessonCompletion {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  lessonId    String   @map("lesson_id")
-  courseId    String   @map("course_id")
-  completedAt DateTime @default(now()) @map("completed_at")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  @@unique([userId, lessonId])
-  @@map("LessonCompletion")
+  @@index([category_id])
+  @@index([created_by_id])
+  @@index([slug])
 }
 
 model CourseCompletion {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  courseId    String   @map("course_id")
-  completedAt DateTime @default(now()) @map("completed_at")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  @@unique([userId, courseId])
-  @@map("CourseCompletion")
+  id           String   @id
+  user_id      String
+  course_id    String
+  completed_at DateTime @default(now()) @db.Timestamptz(6)
+  Course       Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User         User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, course_id], map: "course_completion_unique_user_course")
+  @@index([course_id])
+  @@index([user_id])
+}
+
+model ElhawyWorldVideo {
+  id              String   @id
+  title           String
+  title_en        String?
+  description     String?
+  description_en  String?
+  youtube_url     String
+  cover_image_url String?
+  is_published    Boolean  @default(true)
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([is_published, sort_order, created_at(sort: Desc)], map: "ElhawyWorldVideo_published_sort_idx")
+}
+
+model Enrollment {
+  id          String   @id
+  user_id     String
+  course_id   String
+  enrolled_at DateTime @default(now()) @db.Timestamptz(6)
+  Course      Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User        User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, course_id])
+  @@index([course_id])
+  @@index([user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model GamificationPointRule {
+  event_type String   @id
+  points     Int
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model HomepageSetting {
+  id                                  String   @id @default("default")
+  teacher_image_url                   String?
+  hero_title                          String?
+  hero_slogan                         String?
+  platform_name                       String?
+  youtube_url                         String?
+  linkedin_url                        String?
+  whatsapp_url                        String?
+  facebook_url                        String?
+  telegram_url                        String?
+  team_youtube_url                    String?
+  team_linkedin_url                   String?
+  team_whatsapp_url                   String?
+  team_facebook_url                   String?
+  team_telegram_url                   String?
+  social_right_label                  String?
+  social_left_label                   String?
+  social_left_enabled                 Boolean  @default(true)
+  page_title                          String?
+  hero_bg_preset                      String?
+  footer_title                        String?
+  footer_tagline                      String?
+  footer_copyright                    String?
+  updated_at                          DateTime @default(now()) @db.Timestamptz(6)
+  social_right_label_en               String?
+  social_left_label_en                String?
+  page_title_en                       String?
+  hero_bg_custom_from                 String?
+  hero_bg_custom_to                   String?
+  copyright_overlay_style             String?
+  platform_name_en                    String?
+  hero_title_en                       String?
+  hero_slogan_en                      String?
+  footer_title_en                     String?
+  footer_tagline_en                   String?
+  footer_copyright_en                 String?
+  reviews_section_title_en            String?
+  reviews_section_subtitle_en         String?
+  cta_badge_text_en                   String?
+  cta_title_en                        String?
+  cta_description_en                  String?
+  cta_button_text_en                  String?
+  hero3_title_en                      String?
+  hero3_subtitle_en                   String?
+  platform_details_title_en           String?
+  platform_details_subtitle_en        String?
+  platform_news_section_title_en      String?
+  add_balance_title_en                String?
+  add_balance_subtitle_en             String?
+  add_balance_method_title_en         String?
+  add_balance_transfer_instruction_en String?
+  add_balance_confirmation_note_en    String?
+  add_balance_whatsapp_button_text_en String?
+  add_balance_waiting_note_en         String?
+  store_enabled                       Boolean  @default(false)
+  store_section_title                 String?
+  store_section_description           String?
+  store_section_title_en              String?
+  store_section_description_en        String?
+  subscriptions_enabled               Boolean  @default(false)
+  reviews_section_title               String?
+  reviews_section_subtitle            String?
+  hero_slider_course_id_1             String?
+  hero_slider_course_id_2             String?
+  hero_slider_course_id_3             String?
+  hero_slider_course_id_4             String?
+  hero_slider_course_id_5             String?
+  primary_color                       String?
+  header_logo_url                     String?
+  cta_badge_text                      String?
+  cta_title                           String?
+  cta_description                     String?
+  cta_button_text                     String?
+  hero_template                       String?
+  hero_slider_image_1                 String?
+  hero_slider_image_2                 String?
+  hero_slider_image_3                 String?
+  hero_slider_image_4                 String?
+  hero_slider_image_5                 String?
+  hero_slider_interval_ms             Int?
+  hero3_title                         String?
+  hero3_subtitle                      String?
+  hero3_phone_image_url               String?
+  hero3_phone_bg_color                String?
+  hero3_store_badge_1_image_url       String?
+  hero3_store_badge_1_link            String?
+  hero3_store_badge_2_image_url       String?
+  hero3_store_badge_2_link            String?
+  teachers_enabled                    Boolean  @default(false)
+  platform_details_enabled            Boolean  @default(false)
+  platform_details_title              String?
+  platform_details_subtitle           String?
+  platform_details_background_color   String?
+  platform_details_items              String?
+  platform_news_enabled               Boolean  @default(false)
+  platform_news_items                 String?
+  platform_news_section_title         String?
+  add_balance_title                   String?
+  add_balance_subtitle                String?
+  add_balance_method_title            String?
+  add_balance_transfer_instruction    String?
+  add_balance_wallet_number           String?
+  add_balance_confirmation_note       String?
+  add_balance_whatsapp_number         String?
+  add_balance_whatsapp_button_text    String?
+  add_balance_waiting_note            String?
+  hero_float_image_1                  String?
+  hero_float_image_2                  String?
+  hero_float_image_3                  String?
+  luck_wheel_enabled                  Boolean  @default(false)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model HomeworkSubmission {
+  id              String   @id
+  course_id       String
+  user_id         String
+  submission_type String
+  link_url        String?
+  file_url        String?
+  file_name       String?
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  lesson_id       String?
+  Course          Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Lesson          Lesson?  @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User            User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([course_id])
+  @@index([created_at])
+  @@index([lesson_id])
+  @@index([user_id])
+}
+
+model Lesson {
+  id                   String                 @id
+  course_id            String
+  title                String
+  title_ar             String?
+  slug                 String
+  content              String?
+  video_url            String?
+  pdf_url              String?
+  duration             Int?
+  order                Int                    @default(0)
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  accepts_homework     Boolean                @default(false)
+  ActivationCodeLesson ActivationCodeLesson[]
+  HomeworkSubmission   HomeworkSubmission[]
+  Course               Course                 @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  LessonCompletion     LessonCompletion[]
+  LessonRating         LessonRating[]
+
+  @@unique([course_id, slug])
+  @@index([course_id])
+}
+
+model LessonCompletion {
+  id           String   @id
+  user_id      String
+  lesson_id    String
+  course_id    String
+  completed_at DateTime @default(now()) @db.Timestamptz(6)
+  Course       Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Lesson       Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User         User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, lesson_id], map: "lesson_completion_unique_user_lesson")
+  @@index([course_id])
+  @@index([user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model LessonRating {
+  id         String   @id
+  lesson_id  String
+  user_id    String
+  course_id  String
+  rating     Int
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  Course     Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Lesson     Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lesson_id, user_id], map: "lesson_rating_unique_lesson_user")
+  @@index([course_id])
+  @@index([lesson_id])
+  @@index([user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model LiveStream {
+  id               String   @id
+  course_id        String
+  title            String
+  title_ar         String?
+  provider         String
+  meeting_url      String
+  meeting_id       String?
+  meeting_password String?
+  scheduled_at     DateTime @db.Timestamptz(6)
+  description      String?
+  order            Int      @default(0)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+  Course           Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([course_id])
+  @@index([scheduled_at])
+}
+
+model LuckWheelSpin {
+  id         String   @id
+  user_id    String
+  result_key String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  User       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([user_id, created_at(sort: Desc)])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Message {
+  id              String       @id
+  conversation_id String
+  sender_id       String
+  message_type    String
+  content         String?
+  file_url        String?
+  file_name       String?
+  created_at      DateTime     @default(now()) @db.Timestamptz(6)
+  Conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User            User         @relation(fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversation_id])
+  @@index([created_at])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model PasswordChangeRequest {
+  id                                               String    @id
+  user_id                                          String
+  new_password_hash                                String
+  requested_identifier                             String?
+  requested_old_password                           String?
+  requested_new_password_plain                     String?
+  status                                           String    @default("pending")
+  created_at                                       DateTime  @default(now()) @db.Timestamptz(6)
+  processed_at                                     DateTime? @db.Timestamptz(6)
+  processed_by_id                                  String?
+  User_PasswordChangeRequest_processed_by_idToUser User?     @relation("PasswordChangeRequest_processed_by_idToUser", fields: [processed_by_id], references: [id], onUpdate: NoAction)
+  User_PasswordChangeRequest_user_idToUser         User      @relation("PasswordChangeRequest_user_idToUser", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)])
+  @@index([status])
+  @@index([user_id])
+}
+
+model Payment {
+  id         String   @id
+  user_id    String
+  course_id  String
+  amount     Decimal  @db.Decimal(10, 2)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  Course     Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at])
 }
 
 model PointEvent {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  eventType   String   @map("event_type")
-  referenceId String   @map("reference_id")
-  courseId    String?  @map("course_id")
-  points      Int
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  @@unique([userId, eventType, referenceId])
-  @@map("PointEvent")
+  id           String   @id
+  user_id      String
+  event_type   String
+  reference_id String
+  course_id    String?
+  points       Int
+  metadata     Json?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  Course       Course?  @relation(fields: [course_id], references: [id], onUpdate: NoAction)
+  User         User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, event_type, reference_id], map: "point_event_unique_user_type_ref")
+  @@index([course_id])
+  @@index([created_at(sort: Desc)])
+  @@index([user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Question {
+  id             String           @id
+  quiz_id        String
+  type           String
+  question_text  String
+  order          Int              @default(0)
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  Quiz           Quiz             @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  QuestionOption QuestionOption[]
+
+  @@index([quiz_id])
+}
+
+model QuestionOption {
+  id          String   @id
+  question_id String
+  text        String
+  is_correct  Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  Question    Question @relation(fields: [question_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([question_id])
+}
+
+model Quiz {
+  id                 String               @id
+  course_id          String
+  title              String
+  order              Int                  @default(0)
+  time_limit_minutes Int?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  ActivationCodeQuiz ActivationCodeQuiz[]
+  Question           Question[]
+  Course             Course               @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  QuizAttempt        QuizAttempt[]
+  QuizCompletion     QuizCompletion[]
+
+  @@index([course_id])
+}
+
+model QuizAttempt {
+  id              String   @id
+  user_id         String
+  quiz_id         String
+  score           Int
+  total_questions Int
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  Quiz            Quiz     @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User            User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id])
+  @@index([user_id, quiz_id], map: "QuizAttempt_user_quiz_idx")
+}
+
+model QuizCompletion {
+  id           String   @id
+  user_id      String
+  quiz_id      String
+  course_id    String
+  completed_at DateTime @default(now()) @db.Timestamptz(6)
+  Course       Course   @relation(fields: [course_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Quiz         Quiz     @relation(fields: [quiz_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User         User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, quiz_id], map: "quiz_completion_unique_user_quiz")
+  @@index([course_id])
+  @@index([user_id])
+}
+
+model ReferralRequest {
+  id                                                  String    @id
+  user_id                                             String    @unique(map: "referral_request_unique_user")
+  student_name                                        String
+  student_mobile                                      String
+  student_email                                       String
+  referrer_name                                       String
+  referrer_mobile                                     String
+  status                                              String    @default("PENDING")
+  matched_referrer_user_id                            String?
+  reviewed_by                                         String?
+  reviewed_at                                         DateTime? @db.Timestamptz(6)
+  admin_note                                          String?
+  created_at                                          DateTime  @default(now()) @db.Timestamptz(6)
+  User_ReferralRequest_matched_referrer_user_idToUser User?     @relation("ReferralRequest_matched_referrer_user_idToUser", fields: [matched_referrer_user_id], references: [id], onUpdate: NoAction)
+  User_ReferralRequest_reviewed_byToUser              User?     @relation("ReferralRequest_reviewed_byToUser", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  User_ReferralRequest_user_idToUser                  User      @relation("ReferralRequest_user_idToUser", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status, created_at(sort: Desc)], map: "ReferralRequest_status_idx")
+}
+
+model Review {
+  id              String   @id
+  text            String
+  text_en         String?
+  author_name     String
+  author_title    String?
+  author_title_en String?
+  avatar_letter   String?
+  image_url       String?
+  order           Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([order])
+}
+
+model StoreProduct {
+  id                String              @id
+  title             String
+  description       String              @default("")
+  price             Decimal             @default(0) @db.Decimal(10, 2)
+  image_url         String?
+  pdf_url           String?
+  is_active         Boolean             @default(true)
+  sort_order        Int                 @default(0)
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  cost_price        Decimal             @default(0) @db.Decimal(10, 2)
+  UserStorePurchase UserStorePurchase[]
+
+  @@index([is_active, sort_order, created_at(sort: Desc)], map: "StoreProduct_active_sort_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model SubscriptionPlan {
+  id                       String                     @id
+  name                     String
+  description              String                     @default("")
+  image_url                String?
+  duration_kind            String
+  price                    Decimal                    @default(0) @db.Decimal(10, 2)
+  is_active                Boolean                    @default(true)
+  sort_order               Int                        @default(0)
+  created_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(6)
+  UserPlatformSubscription UserPlatformSubscription[]
+
+  @@index([is_active, sort_order], map: "SubscriptionPlan_active_sort_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model User {
+  id                                                                String                     @id
+  email                                                             String                     @unique
+  password_hash                                                     String
+  name                                                              String
+  role                                                              String                     @default("STUDENT")
+  balance                                                           Decimal                    @default(0) @db.Decimal(10, 2)
+  created_at                                                        DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                                                        DateTime                   @default(now()) @db.Timestamptz(6)
+  student_number                                                    String?
+  guardian_number                                                   String?
+  current_session_id                                                String?
+  copyright_code                                                    String?                    @db.VarChar(10)
+  teacher_subject                                                   String?
+  teacher_avatar_url                                                String?
+  teacher_homepage_order                                            Int?
+  experience_points                                                 Int                        @default(0)
+  wizard_level                                                      Int                        @default(1)
+  ActivationCode                                                    ActivationCode[]
+  Challenge                                                         Challenge[]
+  ChallengeSubmission                                               ChallengeSubmission[]
+  Conversation_Conversation_staff_user_idToUser                     Conversation[]             @relation("Conversation_staff_user_idToUser")
+  Conversation_Conversation_student_user_idToUser                   Conversation[]             @relation("Conversation_student_user_idToUser")
+  Course                                                            Course[]
+  CourseCompletion                                                  CourseCompletion[]
+  Enrollment                                                        Enrollment[]
+  HomeworkSubmission                                                HomeworkSubmission[]
+  LessonCompletion                                                  LessonCompletion[]
+  LessonRating                                                      LessonRating[]
+  LuckWheelSpin                                                     LuckWheelSpin[]
+  Message                                                           Message[]
+  PasswordChangeRequest_PasswordChangeRequest_processed_by_idToUser PasswordChangeRequest[]    @relation("PasswordChangeRequest_processed_by_idToUser")
+  PasswordChangeRequest_PasswordChangeRequest_user_idToUser         PasswordChangeRequest[]    @relation("PasswordChangeRequest_user_idToUser")
+  Payment                                                           Payment[]
+  PointEvent                                                        PointEvent[]
+  QuizAttempt                                                       QuizAttempt[]
+  QuizCompletion                                                    QuizCompletion[]
+  ReferralRequest_ReferralRequest_matched_referrer_user_idToUser    ReferralRequest[]          @relation("ReferralRequest_matched_referrer_user_idToUser")
+  ReferralRequest_ReferralRequest_reviewed_byToUser                 ReferralRequest[]          @relation("ReferralRequest_reviewed_byToUser")
+  ReferralRequest_ReferralRequest_user_idToUser                     ReferralRequest?           @relation("ReferralRequest_user_idToUser")
+  UserPlatformSubscription                                          UserPlatformSubscription[]
+  UserStorePurchase                                                 UserStorePurchase[]
+}
+
+model UserPlatformSubscription {
+  id               String            @id
+  user_id          String
+  plan_id          String?
+  price_paid       Decimal           @default(0) @db.Decimal(10, 2)
+  expires_at       DateTime          @db.Timestamptz(6)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  SubscriptionPlan SubscriptionPlan? @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
+  User             User              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, expires_at], map: "UserPlatformSubscription_user_expires_idx")
+}
+
+model UserStorePurchase {
+  id           String       @id
+  user_id      String
+  product_id   String
+  price_paid   Decimal      @default(0) @db.Decimal(10, 2)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  StoreProduct StoreProduct @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User         User         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, product_id])
+  @@index([user_id, created_at(sort: Desc)], map: "UserStorePurchase_user_idx")
 }
